@@ -433,11 +433,11 @@ function PublicProfilePage({ user }) {
                     </a>
                 ))}
             </nav>
-
+            
             <footer className="landing-footer">
                 <div className="landing-footer-inner">
                     <div className="landing-footer-copy">
-                        &copy; {new Date().getFullYear()} Developed by Engr. Dr. Philip Omolaye
+                        &copy; {new Date().getFullYear()} Developed by Engr. Assoc. Prof. Philip Omolaye
                     </div>
                     <div>
                         {user ? (
