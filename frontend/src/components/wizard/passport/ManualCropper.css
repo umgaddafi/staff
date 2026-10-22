@@ -1,0 +1,15 @@
+.passport-react-crop.ReactCrop--fixed-aspect .ReactCrop__drag-handle.ord-n,
+.passport-react-crop.ReactCrop--fixed-aspect .ReactCrop__drag-handle.ord-e,
+.passport-react-crop.ReactCrop--fixed-aspect .ReactCrop__drag-handle.ord-s,
+.passport-react-crop.ReactCrop--fixed-aspect .ReactCrop__drag-handle.ord-w {
+  display: block;
+}
+
+@media (pointer: coarse) {
+  .passport-react-crop .ReactCrop__drag-handle.ord-n,
+  .passport-react-crop .ReactCrop__drag-handle.ord-e,
+  .passport-react-crop .ReactCrop__drag-handle.ord-s,
+  .passport-react-crop .ReactCrop__drag-handle.ord-w {
+    display: block;
+  }
+}
