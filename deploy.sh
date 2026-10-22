@@ -26,23 +26,27 @@ if [ -f backend/.env ]; then
     mv backend/.env backend/.env.local_backup
 fi
 if [ -f backend/.env.host ]; then
-    mv backend/.env.host backend/.env
+    cp backend/.env.host backend/.env
 fi
 
 # 4. Stage changes
 echo ""
 echo "📝 Staging changes for git..."
-# Force add backend/.env in case it's in .gitignore
-git add -f backend/.env
-git add -f backend/vendor
-git add index.html assets/
+# Force add backend/.env and backend/vendor
+if [ -f backend/.env ]; then
+    git add -f backend/.env
+fi
+if [ -d backend/vendor ]; then
+    git add -f backend/vendor
+fi
+git add index.html assets/ fonts/ images/ mediapipe/ models/ vendor/ jostum-logo.png jostum.png jostumstaffs.png test_signature.png .htaccess || true
 git add .
 
 # 5. Commit changes
 echo ""
 echo "💾 Committing changes..."
 # We use || true so the script doesn't fail if there's nothing to commit
-git commit -m "Deployed at  - $(date +'%Y-%m-%d %H:%M:%S')" || true
+git commit -m "Deploy to cPanel with vendor dependencies - $(date +'%Y-%m-%d %H:%M:%S')" || true
 
 # 6. Push to GitHub
 echo ""
@@ -53,11 +57,11 @@ git push origin HEAD
 echo ""
 echo "🔄 Restoring local .env files..."
 if [ -f backend/.env ]; then
-    mv backend/.env backend/.env.host
+    rm -f backend/.env
 fi
 if [ -f backend/.env.local_backup ]; then
     mv backend/.env.local_backup backend/.env
 fi
 
 echo ""
-echo "✅ Deployment pushed to GitHub successfully! Bluehost can now pull this."
+echo "✅ Deployment pushed to GitHub successfully! cPanel can now pull this."
