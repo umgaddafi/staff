@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { api } from '../../lib/api';
 import jostumLogo from '../../assets/jostum.jpeg';
 import jostumHallBg from '../../assets/jostumhall.png';
 
@@ -19,20 +20,12 @@ export function AuditLoginView({ title = "Admin Portal Login", subtitle, onLogin
 
         try {
             // Attempt login via API or validate seeded credentials
-            const res = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify({ username: email, password })
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                if (onLoginSuccess) {
-                    onLoginSuccess(data.user || { email, role: title.toLowerCase().includes('panel') ? 'Panel Member' : 'Admin' });
-                }
-                setSubmitting(false);
-                return;
+            const data = await api.post('/api/auth/login', { username: email, password });
+            if (data && onLoginSuccess) {
+                onLoginSuccess(data.user || { email, role: title.toLowerCase().includes('panel') ? 'Panel Member' : 'Admin' });
             }
+            setSubmitting(false);
+            return;
         } catch (err) {
             // Fallback validation for seeded accounts
         }

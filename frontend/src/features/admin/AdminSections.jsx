@@ -7,6 +7,7 @@ import { usePendingAction } from '../../hooks/usePendingAction';
 import { formatDateTime } from '../../utils/formatters';
 import { AdminRequestsWorkspace } from './AdminRequestsWorkspace';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { api } from '../../lib/api';
 
 const JOSTUM_API = import.meta.env.DEV ? '/jostum-api' : '/backend/public/jostum-api';
 
@@ -828,8 +829,7 @@ export function AdminPayslipSection() {
     const fetchBatches = async () => {
         try {
             setLoadingBatches(true);
-            const res = await fetch('/api/payroll/batches');
-            const data = await res.json();
+            const data = await api.get('/api/payroll/batches');
             if (data.status === 'success') {
                 setBatches(data.batches || []);
             }
@@ -860,14 +860,12 @@ export function AdminPayslipSection() {
             formData.append('payroll_year', year);
             formData.append('payroll_month', month);
 
-            const res = await fetch('/api/payroll/upload', {
+            const data = await api('/api/payroll/upload', {
                 method: 'POST',
-                body: formData,
+                formData,
             });
 
-            const data = await res.json();
-
-            if (res.ok && data.status === 'success') {
+            if (data.status === 'success') {
                 setFeedback({
                     type: 'success',
                     message: data.message,
@@ -887,7 +885,7 @@ export function AdminPayslipSection() {
             console.error('Payroll upload error:', err);
             setFeedback({
                 type: 'error',
-                message: 'A network or server error occurred while processing the payroll file.',
+                message: err.message || 'A network or server error occurred while processing the payroll file.',
             });
         } finally {
             setUploading(false);
@@ -900,10 +898,7 @@ export function AdminPayslipSection() {
         }
 
         try {
-            const res = await fetch(`/api/payroll/batches/${batchId}`, {
-                method: 'DELETE',
-            });
-            const data = await res.json();
+            const data = await api.delete(`/api/payroll/batches/${batchId}`);
             if (data.status === 'success') {
                 await fetchBatches();
                 setFeedback({ type: 'success', message: `Payroll batch for ${period} was successfully deleted.` });
@@ -912,9 +907,11 @@ export function AdminPayslipSection() {
             }
         } catch (err) {
             console.error('Error deleting batch:', err);
-            alert('Failed to delete payroll batch.');
+            alert(err.message || 'Failed to delete payroll batch.');
         }
     };
+
+    const templateDownloadUrl = `${import.meta.env.DEV ? '' : (import.meta.env.VITE_API_BASE_URL || '/backend/public')}/api/payroll/template`;
 
     return (
         <>
@@ -923,7 +920,7 @@ export function AdminPayslipSection() {
                 subtitle="Upload official monthly .xlsx payroll workbooks to publish payslips across all university staff portals"
                 meta={
                     <a
-                        href="/api/payroll/template"
+                        href={templateDownloadUrl}
                         download="jostum_payslip_upload_template.xlsx"
                         className="admin-button"
                         style={{

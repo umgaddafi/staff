@@ -8,6 +8,9 @@ DirectoryIndex index.html index.php
     RewriteCond %{REQUEST_URI} ^/backend/ [NC]
     RewriteRule ^ - [L]
 
+    # Route /api/ requests directly to Laravel backend
+    RewriteRule ^api/(.*)$ backend/public/api/$1 [L,QSA]
+
     # Route all other requests to React's index.html (for React Router)
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d

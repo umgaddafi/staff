@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { api } from '../../lib/api';
 import '../../styles/app.css';
 
 export function StaffPaymentsSections({ staff }) {
@@ -30,8 +31,7 @@ export function StaffPaymentsSections({ staff }) {
         let isMounted = true;
         const fetchPeriods = async () => {
             try {
-                const res = await fetch(`/api/payroll/periods?pf=${encodeURIComponent(resolvedPf)}`);
-                const data = await res.json();
+                const data = await api.get(`/api/payroll/periods?pf=${encodeURIComponent(resolvedPf)}`);
                 if (isMounted && data.status === 'success') {
                     if (data.periods_by_year) {
                         setPeriodsByYear(data.periods_by_year);
@@ -53,8 +53,7 @@ export function StaffPaymentsSections({ staff }) {
             setLoading(true);
             setNotFoundMsg('');
             try {
-                const res = await fetch(`/api/payroll/payslip?year=${year}&month=${month}&pf=${encodeURIComponent(resolvedPf)}`);
-                const data = await res.json();
+                const data = await api.get(`/api/payroll/payslip?year=${year}&month=${month}&pf=${encodeURIComponent(resolvedPf)}`);
 
                 if (isMounted) {
                     if (data.status === 'success' && data.payslip) {
@@ -68,7 +67,7 @@ export function StaffPaymentsSections({ staff }) {
                 console.error('Error fetching payslip:', err);
                 if (isMounted) {
                     setLivePayslip(null);
-                    setNotFoundMsg(`Unable to load payslip for ${month} ${year}.`);
+                    setNotFoundMsg(err.message || `Unable to load payslip for ${month} ${year}.`);
                 }
             } finally {
                 if (isMounted) setLoading(false);
