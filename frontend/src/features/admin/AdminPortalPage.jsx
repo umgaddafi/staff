@@ -7,7 +7,6 @@ import { getErrorMessage } from '../../utils/formatters';
 import {
     AdminAccountsRolesSection,
     AdminReportsSection,
-    AdminVerificationQueueSection,
     AdminDashboardSection,
     AdminRequestsSection,
     AdminPayslipSection,
@@ -47,7 +46,6 @@ function AdminPortalPage({ user, onLogout, showFlash }) {
             title: 'Operations',
             items: [
                 { to: '/admin/requests', label: 'Approval Workspace', navLabel: 'Approval Workspace', icon: 'requests' },
-                { to: '/admin/verifications', label: 'Pending Verifications', navLabel: 'Pending Verifications', icon: 'operations' },
                 { to: '/admin/reports', label: 'Reports & Exports', navLabel: 'Reports & Exports', icon: 'reports' },
             ],
         },
@@ -116,7 +114,7 @@ function AdminPortalPage({ user, onLogout, showFlash }) {
     } else if (section === 'requests') {
         content = <AdminRequestsSection summary={data.requests} reloadPortal={load} showFlash={showFlash} />;
     } else if (section === 'verifications') {
-        content = <AdminVerificationQueueSection summary={data.requests} reloadPortal={load} showFlash={showFlash} />;
+        return <Navigate to="/admin/requests" replace />;
     } else if (section === 'access') {
         content = (
             <AdminAccountsRolesSection
@@ -151,6 +149,7 @@ function AdminPortalPage({ user, onLogout, showFlash }) {
             <AdminSettingsSection
                 systemSettings={data.systemSettings}
                 rolePermissions={data.rolePermissions}
+                staffList={data.staff?.items || []}
                 onSave={async (settings) => {
                     const result = await api('/api/admin/system-settings', {
                         method: 'POST',

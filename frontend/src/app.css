@@ -6017,6 +6017,7 @@
     .admin-portal-topbar-shell {
         grid-column: 2 / -1;
         grid-row: 1;
+        justify-content: flex-end;
     }
 
     .admin-portal-topbar-brand {
@@ -9328,6 +9329,199 @@
     margin-bottom: 0;
 }
 
+/* Staff Hierarchy Settings Styles */
+.admin-hierarchy-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: 1.5rem;
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .admin-hierarchy-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.admin-hierarchy-subcard {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 1.25rem;
+}
+
+.admin-hierarchy-subcard.is-info {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.admin-hierarchy-bulk-panel {
+    padding: 0.85rem;
+    background: #f1f5f9;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    border: 1px solid #cbd5e1;
+}
+
+.admin-hierarchy-search-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+    z-index: 50;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.admin-hierarchy-search-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.55rem 0.85rem;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.15s ease;
+}
+
+.admin-hierarchy-search-item:last-child {
+    border-bottom: none;
+}
+
+.admin-hierarchy-search-item:hover {
+    background: #f8fafc;
+}
+
+.admin-hierarchy-list-wrap {
+    max-height: 480px;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+}
+
+.admin-hierarchy-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.admin-hierarchy-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #ffffff;
+    transition: all 0.15s ease;
+}
+
+.admin-hierarchy-row:hover {
+    border-color: #006633;
+    box-shadow: 0 2px 6px rgba(0, 102, 51, 0.08);
+}
+
+.admin-hierarchy-rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.8rem;
+    height: 1.8rem;
+    border-radius: 6px;
+    background: rgba(0, 102, 51, 0.1);
+    color: #006633;
+    font-weight: 700;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+
+.admin-hierarchy-pf-pill {
+    font-family: monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #1e293b;
+    background: #f1f5f9;
+    padding: 0.2rem 0.55rem;
+    border-radius: 4px;
+    border: 1px solid #cbd5e1;
+    flex-shrink: 0;
+}
+
+.admin-hierarchy-staff-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.admin-hierarchy-staff-name {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.admin-hierarchy-staff-meta {
+    font-size: 0.76rem;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.admin-hierarchy-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+.admin-hierarchy-tiers {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.admin-hierarchy-tier-item {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    padding: 0.65rem 0.75rem;
+    background: #ffffff;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.admin-hierarchy-tier-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 999px;
+    background: #006633;
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.admin-hierarchy-tier-body strong {
+    display: block;
+    font-size: 0.82rem;
+    color: #0f172a;
+    margin-bottom: 0.15rem;
+}
+
+.admin-hierarchy-tier-body p {
+    margin: 0;
+    font-size: 0.76rem;
+    color: #64748b;
+    line-height: 1.4;
+}
+
 /* Direct Logout Buttons */
 .staff-portal-topbar-logout-direct,
 .admin-portal-topbar-logout-button {
@@ -9364,6 +9558,7 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    margin-left: auto;
 }
 
 .portal-sidebar-footer {

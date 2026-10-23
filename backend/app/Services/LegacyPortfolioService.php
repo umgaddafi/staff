@@ -334,18 +334,48 @@ class LegacyPortfolioService
             $query->where('d.name', $department);
         }
 
+        $settings = $this->getSystemSettings();
+        $hierarchyPfNumbers = $settings['hierarchy_pf_numbers'] ?? ['PF/0583', 'PF/1229', 'PF/2365', 'PF/1466'];
+        if (is_string($hierarchyPfNumbers)) {
+            $decoded = json_decode($hierarchyPfNumbers, true);
+            $hierarchyPfNumbers = is_array($decoded) ? $decoded : preg_split('/[\r\n,]+/', $hierarchyPfNumbers);
+        }
+        if (!is_array($hierarchyPfNumbers)) {
+            $hierarchyPfNumbers = ['PF/0583', 'PF/1229', 'PF/2365', 'PF/1466'];
+        }
+        $hierarchyPfNumbers = array_values(array_filter(array_map('trim', $hierarchyPfNumbers), fn($v) => $v !== ''));
+
+        $pfCaseSql = "CASE ";
+        $pfIndex = 1;
+        foreach ($hierarchyPfNumbers as $pf) {
+            $cleanPf = strtoupper(preg_replace('/[^A-Z0-9]/', '', (string)$pf));
+            if ($cleanPf !== '') {
+                $escaped = addslashes($cleanPf);
+                $pfCaseSql .= "WHEN UPPER(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(s.pf_number, ''), '/', ''), ' ', ''), '-', ''), ',', '')) = '{$escaped}' THEN {$pfIndex} ";
+                $pfIndex++;
+            }
+        }
+        $pfCaseSql .= "ELSE 999999 END";
+
         $items = $query
-            ->orderByRaw("
-                CASE 
-                    WHEN UPPER(REPLACE(REPLACE(COALESCE(s.pf_number, ''), '/', ''), ',', '')) = 'PF0583' THEN 1
-                    WHEN UPPER(REPLACE(REPLACE(COALESCE(s.pf_number, ''), '/', ''), ',', '')) = 'PF1229' THEN 2
-                    WHEN UPPER(REPLACE(REPLACE(COALESCE(s.pf_number, ''), '/', ''), ',', '')) = 'PF2365' THEN 3
-                    WHEN UPPER(REPLACE(REPLACE(COALESCE(s.pf_number, ''), '/', ''), ',', '')) = 'PF1466' THEN 4
-                    ELSE 5
-                END
-            ")
-            ->orderBy('rank_level_value')
-            ->orderBy('s.staff_id')
+            ->orderByRaw($pfCaseSql)
+            ->orderByRaw("CASE WHEN (COALESCE(s.profile_photo, s.passport, '') != '' AND COALESCE(s.profile_photo, s.passport, '') NOT LIKE '%default%' AND COALESCE(s.profile_photo, s.passport, '') != '0') THEN 0 ELSE 1 END ASC")
+            ->orderByRaw("CASE 
+                WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%professor%' AND LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) NOT LIKE '%assoc%' AND LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) NOT LIKE '%asst%' THEN 1
+                WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%assoc%prof%' OR LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%reader%' THEN 2
+                WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%senior%lecturer%' THEN 3
+                WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%lecturer%i%' AND LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) NOT LIKE '%lecturer%ii%' THEN 4
+                WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%lecturer%1%' THEN 4
+                WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%lecturer%ii%' OR LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%lecturer%2%' THEN 5
+                WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%assistant%lecturer%' OR LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%asst%lecturer%' THEN 6
+                WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%graduate%assistant%' THEN 7
+                ELSE 9
+            END ASC")
+            ->orderByRaw("CASE WHEN c.name IS NOT NULL AND c.name != '' AND LOWER(c.name) NOT LIKE '%non-college%' AND LOWER(c.name) NOT LIKE '%non college%' THEN 0 ELSE 1 END ASC")
+            ->orderByRaw("COALESCE(c.name, 'ZZZ') ASC")
+            ->orderByRaw("COALESCE(d.name, s.department, 'ZZZ') ASC")
+            ->orderBy('s.first_name', 'asc')
+            ->orderBy('s.last_name', 'asc')
             ->get()
             ->map(fn ($item) => [
                 'staffId' => (int) $item->staff_id,
@@ -368,6 +398,7 @@ class LegacyPortfolioService
                 'ranks' => DB::table('ranks')->orderBy('id')->pluck('name')->all(),
                 'categories' => DB::table('staff_categories')->orderBy('id')->pluck('name')->all(),
             ],
+            'hierarchyPfNumbers' => $hierarchyPfNumbers,
         ];
     }
 
@@ -476,6 +507,7 @@ class LegacyPortfolioService
             'support_phone' => '+234 803 000 0000',
             'allow_public_directory' => true,
             'allow_cv_download' => true,
+            'hierarchy_pf_numbers' => ['PF/0583', 'PF/1229', 'PF/2365', 'PF/1466'],
         ];
 
         try {
@@ -518,7 +550,18 @@ class LegacyPortfolioService
                 if ($key === '') {
                     continue;
                 }
-                $encodedValue = is_string($value) ? $value : json_encode($value);
+                if ($key === 'hierarchy_pf_numbers') {
+                    if (is_string($value)) {
+                        $decoded = json_decode($value, true);
+                        $value = is_array($decoded) ? $decoded : preg_split('/[\r\n,]+/', $value);
+                    }
+                    if (is_array($value)) {
+                        $value = array_values(array_filter(array_map('trim', $value), fn($v) => $v !== ''));
+                    }
+                    $encodedValue = json_encode($value);
+                } else {
+                    $encodedValue = is_string($value) ? $value : json_encode($value);
+                }
                 DB::table('system_settings')->updateOrInsert(
                     ['setting_key' => $key],
                     ['setting_value' => $encodedValue, 'updated_at' => now()]

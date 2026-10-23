@@ -145,8 +145,12 @@ function PublicDirectoryPage({ user }) {
         PF1466: 216,
     };
 
+    const activePriorityPfs = Array.isArray(directory.hierarchyPfNumbers) && directory.hierarchyPfNumbers.length > 0
+        ? directory.hierarchyPfNumbers
+        : PRIORITY_PF_NUMBERS;
+
     const firstList = [];
-    PRIORITY_PF_NUMBERS.forEach((targetPf) => {
+    activePriorityPfs.forEach((targetPf) => {
         const targetKey = normalizePfNumber(targetPf);
         const fallbackId = priorityKeyMap[targetKey];
         const match = filteredItems.find((item) => (

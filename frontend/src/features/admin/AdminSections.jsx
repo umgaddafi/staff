@@ -66,7 +66,7 @@ function AdminDashboardSection({ dashboard }) {
                                     <td>{formatDateTime(item.timestamp)}</td>
                                     <td><span className="admin-badge is-warning">Pending</span></td>
                                     <td>
-                                        <Link className="admin-table-action" to="/admin/verifications">
+                                        <Link className="admin-table-action" to="/admin/requests">
                                             Review
                                         </Link>
                                     </td>
