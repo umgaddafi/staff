@@ -14,9 +14,8 @@ const REQUEST_TABS = [
 ];
 
 const QUEUE_MODES = [
-    { key: 'pending-first', label: 'Pending First' },
     { key: 'pending-only', label: 'Pending Only' },
-    { key: 'all', label: 'All Staff' },
+    { key: 'all', label: 'All History' },
 ];
 
 function AdminRequestsWorkspace({
@@ -25,7 +24,7 @@ function AdminRequestsWorkspace({
     showFlash,
     title = 'Change Requests',
     subtitle = 'Review staff updates, compare submitted changes, and approve or reject from one workspace.',
-    initialQueueMode = 'pending-first',
+    initialQueueMode = 'pending-only',
     initialTab = 'pending',
 }) {
     const [history, setHistory] = useState(null);
@@ -75,11 +74,6 @@ function AdminRequestsWorkspace({
             return;
         }
 
-        if (activeTab === 'pending' && getVisibleLogs(history.logs, 'pending').length === 0 && history.logs.length > 0) {
-            setActiveTab('recent');
-            return;
-        }
-
         const nextVisibleLogs = getVisibleLogs(history.logs, activeTab);
         if (!nextVisibleLogs.length) {
             setSelectedLogId(null);
@@ -96,8 +90,7 @@ function AdminRequestsWorkspace({
         return runPending(`load-history-${staffId}`, async () => {
             try {
                 const result = await api(`/api/admin/requests/${staffId}`);
-                const hasPending = getVisibleLogs(result.logs, 'pending').length > 0;
-                const nextTab = hasPending ? 'pending' : 'recent';
+                const nextTab = activeTab || 'pending';
                 const nextLogs = getVisibleLogs(result.logs, nextTab);
 
                 setHistory(result);
@@ -256,7 +249,7 @@ function AdminRequestsWorkspace({
                     {filteredSummary.length === 0 ? (
                         <div className="admin-empty-state">
                             <strong>No request records found.</strong>
-                            <p>Try a different search term or queue filter.</p>
+                            <p>There are currently no requested changes waiting for approval.</p>
                         </div>
                     ) : (
                         <div className="admin-request-queue-list">
@@ -435,8 +428,16 @@ function AdminRequestDetailPane({
 
             {visibleLogs.length === 0 ? (
                 <div className="admin-empty-state">
-                    <strong>No requests in this view.</strong>
-                    <p>Switch tabs to inspect a different part of the request timeline.</p>
+                    <strong>
+                        {activeTab === 'pending'
+                            ? 'No pending requests awaiting approval.'
+                            : 'No requests in this view.'}
+                    </strong>
+                    <p>
+                        {activeTab === 'pending'
+                            ? 'All submitted changes for this staff member have been reviewed.'
+                            : 'Switch tabs to inspect a different part of the request timeline.'}
+                    </p>
                 </div>
             ) : (
                 <>

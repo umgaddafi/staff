@@ -110,6 +110,86 @@ function AdminSettingsSection({ systemSettings = {}, rolePermissions = {}, staff
     }
 
     // --- Staff Hierarchy Tab State ---
+    const DEFAULT_SECONDARY_CRITERIA = [
+        {
+            id: 'passport_present',
+            label: 'Staff with Passport / Photo Present',
+            description: 'Staff with an uploaded portrait or passport photograph appear first before default avatars.',
+            enabled: true,
+        },
+        {
+            id: 'professors',
+            label: 'Full Professors Seniority',
+            description: 'Profiles with the academic rank of Professor take top academic cadre seniority.',
+            enabled: true,
+        },
+        {
+            id: 'associate_professors',
+            label: 'Associate Professors / Readers',
+            description: 'Associate Professors and Readers take precedence before Senior Lecturers.',
+            enabled: true,
+        },
+        {
+            id: 'rank_seniority',
+            label: 'Other Academic Ranks Seniority',
+            description: 'Senior Lecturers → Lecturers I & II → Assistant Lecturers → Graduate Assistants.',
+            enabled: true,
+        },
+        {
+            id: 'college_units',
+            label: 'Colleges vs. Non-College Units',
+            description: 'Academic Colleges and Teaching Faculties appear before Non-College or Administrative units.',
+            enabled: true,
+        },
+        {
+            id: 'department',
+            label: 'Department Alphabetical (A-Z)',
+            description: 'Profiles within the same tier are sorted alphabetically by academic department.',
+            enabled: true,
+        },
+        {
+            id: 'staff_name',
+            label: 'Staff Full Name (A-Z)',
+            description: 'Profiles are sorted alphabetically by staff first and last name.',
+            enabled: true,
+        },
+    ];
+
+    const parseSecondaryCriteria = (val) => {
+        let list = val;
+        if (typeof list === 'string') {
+            try {
+                list = JSON.parse(list);
+            } catch {
+                list = null;
+            }
+        }
+        if (!Array.isArray(list) || list.length === 0) {
+            return DEFAULT_SECONDARY_CRITERIA;
+        }
+        const map = new Map();
+        DEFAULT_SECONDARY_CRITERIA.forEach((item) => map.set(item.id, { ...item }));
+
+        const result = [];
+        list.forEach((it) => {
+            const id = typeof it === 'string' ? it : it?.id;
+            if (map.has(id)) {
+                const def = map.get(id);
+                result.push({
+                    ...def,
+                    enabled: it?.enabled !== undefined ? Boolean(it.enabled) : true,
+                });
+                map.delete(id);
+            }
+        });
+
+        map.forEach((item) => {
+            result.push(item);
+        });
+
+        return result;
+    };
+
     const parseHierarchyList = (val) => {
         if (Array.isArray(val)) return val;
         if (typeof val === 'string') {
@@ -124,6 +204,7 @@ function AdminSettingsSection({ systemSettings = {}, rolePermissions = {}, staff
     };
 
     const [hierarchyList, setHierarchyList] = useState(() => parseHierarchyList(systemSettings?.hierarchy_pf_numbers));
+    const [secondaryCriteria, setSecondaryCriteria] = useState(() => parseSecondaryCriteria(systemSettings?.hierarchy_secondary_criteria));
     const [newPfInput, setNewPfInput] = useState('');
     const [bulkPfText, setBulkPfText] = useState('');
     const [showBulkMode, setShowBulkMode] = useState(false);
@@ -136,6 +217,44 @@ function AdminSettingsSection({ systemSettings = {}, rolePermissions = {}, staff
             setHierarchyList(parseHierarchyList(systemSettings.hierarchy_pf_numbers));
         }
     }, [systemSettings?.hierarchy_pf_numbers]);
+
+    useEffect(() => {
+        if (systemSettings?.hierarchy_secondary_criteria !== undefined) {
+            setSecondaryCriteria(parseSecondaryCriteria(systemSettings.hierarchy_secondary_criteria));
+        }
+    }, [systemSettings?.hierarchy_secondary_criteria]);
+
+    const handleToggleSecondary = (id) => {
+        setSecondaryCriteria((prev) =>
+            prev.map((it) => (it.id === id ? { ...it, enabled: !it.enabled } : it))
+        );
+    };
+
+    const handleMoveSecondaryUp = (index) => {
+        if (index <= 0) return;
+        setSecondaryCriteria((prev) => {
+            const next = [...prev];
+            const temp = next[index - 1];
+            next[index - 1] = next[index];
+            next[index] = temp;
+            return next;
+        });
+    };
+
+    const handleMoveSecondaryDown = (index) => {
+        if (index >= secondaryCriteria.length - 1) return;
+        setSecondaryCriteria((prev) => {
+            const next = [...prev];
+            const temp = next[index + 1];
+            next[index + 1] = next[index];
+            next[index] = temp;
+            return next;
+        });
+    };
+
+    const handleResetSecondaryDefaults = () => {
+        setSecondaryCriteria(DEFAULT_SECONDARY_CRITERIA);
+    };
 
     const normalizePf = (val) => String(val || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
@@ -217,6 +336,10 @@ function AdminSettingsSection({ systemSettings = {}, rolePermissions = {}, staff
             await onSave({
                 ...systemSettings,
                 hierarchy_pf_numbers: hierarchyList,
+                hierarchy_secondary_criteria: secondaryCriteria.map((c) => ({
+                    id: c.id,
+                    enabled: Boolean(c.enabled),
+                })),
             });
             setHierarchySaved(true);
             setTimeout(() => setHierarchySaved(false), 3500);
@@ -775,63 +898,121 @@ function AdminSettingsSection({ systemSettings = {}, rolePermissions = {}, staff
                                 </div>
                             </div>
 
-                            {/* RIGHT COLUMN: Secondary Hierarchy Explanatory Card */}
+                            {/* RIGHT COLUMN: Selectable & Reorderable Secondary Hierarchy */}
                             <div className="admin-hierarchy-right">
                                 <div className="admin-hierarchy-subcard is-info">
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                                        <div style={{
-                                            width: '28px',
-                                            height: '28px',
-                                            borderRadius: '6px',
-                                            background: 'rgba(0, 102, 51, 0.12)',
-                                            color: '#006633',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center'
-                                        }}>
-                                            <GraduationCap size={16} />
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <div style={{
+                                                width: '28px',
+                                                height: '28px',
+                                                borderRadius: '6px',
+                                                background: 'rgba(0, 102, 51, 0.12)',
+                                                color: '#006633',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}>
+                                                <GraduationCap size={16} />
+                                            </div>
+                                            <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: '700', color: '#0f172a' }}>
+                                                Secondary Hierarchy Rules
+                                            </h4>
                                         </div>
-                                        <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: '700', color: '#0f172a' }}>
-                                            Secondary Hierarchy Rules
-                                        </h4>
+                                        <button
+                                            type="button"
+                                            className="admin-button admin-button-secondary"
+                                            style={{ fontSize: '0.78rem', padding: '0.3rem 0.65rem' }}
+                                            onClick={handleResetSecondaryDefaults}
+                                            title="Reset secondary criteria to default university order"
+                                        >
+                                            <RefreshCw size={13} style={{ marginRight: '4px' }} /> Defaults
+                                        </button>
                                     </div>
 
                                     <p style={{ margin: '0 0 1rem', fontSize: '0.82rem', color: '#64748b', lineHeight: '1.45' }}>
-                                        Staff members not included in the priority list above are dynamically ordered across the public directory according to the following university criteria:
+                                        Staff not in the priority list above are sorted by the selected rules below. Toggle rules on/off or reorder their execution priority:
                                     </p>
 
                                     <div className="admin-hierarchy-tiers">
-                                        <div className="admin-hierarchy-tier-item">
-                                            <div className="admin-hierarchy-tier-number">1</div>
-                                            <div className="admin-hierarchy-tier-body">
-                                                <strong>Staff with Passport / Photo Present</strong>
-                                                <p>Staff members with an uploaded portrait or passport photograph appear first before profiles with default placeholders.</p>
-                                            </div>
-                                        </div>
+                                        {(() => {
+                                            let activeCounter = 0;
+                                            return secondaryCriteria.map((crit, index) => {
+                                                const isEnabled = Boolean(crit.enabled);
+                                                if (isEnabled) activeCounter++;
+                                                const tierNumber = isEnabled ? activeCounter : null;
 
-                                        <div className="admin-hierarchy-tier-item">
-                                            <div className="admin-hierarchy-tier-number">2</div>
-                                            <div className="admin-hierarchy-tier-body">
-                                                <strong>Academic Rank Seniority</strong>
-                                                <p>Senior academic cadres take precedence: <em>Professors</em> &rarr; <em>Associate Professors (Readers)</em> &rarr; <em>Senior Lecturers</em> &rarr; <em>Lecturers I &amp; II</em> &rarr; <em>Assistant Lecturers &amp; GAs</em>.</p>
-                                            </div>
-                                        </div>
+                                                return (
+                                                    <div
+                                                        key={crit.id}
+                                                        className={`admin-hierarchy-tier-item ${!isEnabled ? 'is-disabled' : ''}`}
+                                                    >
+                                                        <div
+                                                            className={`admin-hierarchy-tier-number ${!isEnabled ? 'is-disabled' : ''}`}
+                                                            title={isEnabled ? `Applied as Tier ${tierNumber}` : 'Rule is currently disabled'}
+                                                        >
+                                                            {isEnabled ? tierNumber : '—'}
+                                                        </div>
 
-                                        <div className="admin-hierarchy-tier-item">
-                                            <div className="admin-hierarchy-tier-number">3</div>
-                                            <div className="admin-hierarchy-tier-body">
-                                                <strong>Colleges vs. Non-College Units</strong>
-                                                <p>Academic Colleges and Teaching Faculties appear before Non-College Administrative or Central Directorate units.</p>
-                                            </div>
-                                        </div>
+                                                        <div className="admin-hierarchy-tier-body">
+                                                            <strong>
+                                                                {crit.label}
+                                                                <span
+                                                                    style={{
+                                                                        fontSize: '0.68rem',
+                                                                        padding: '0.1rem 0.4rem',
+                                                                        borderRadius: '999px',
+                                                                        background: isEnabled ? 'rgba(0, 102, 51, 0.1)' : 'rgba(100, 116, 139, 0.1)',
+                                                                        color: isEnabled ? '#006633' : '#64748b',
+                                                                        fontWeight: '600',
+                                                                    }}
+                                                                >
+                                                                    {isEnabled ? `Tier ${tierNumber}` : 'Disabled'}
+                                                                </span>
+                                                            </strong>
+                                                            <p>{crit.description}</p>
+                                                        </div>
 
-                                        <div className="admin-hierarchy-tier-item">
-                                            <div className="admin-hierarchy-tier-number">4</div>
-                                            <div className="admin-hierarchy-tier-body">
-                                                <strong>Department &amp; Alphabetical Order</strong>
-                                                <p>Within the same rank and college level, profiles are sorted alphabetically by Academic Department, then by Staff Full Name.</p>
-                                            </div>
-                                        </div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
+                                                            <label
+                                                                className="admin-toggle-switch admin-toggle-switch-sm"
+                                                                title={isEnabled ? 'Click to disable criterion' : 'Click to enable criterion'}
+                                                                aria-label={`Toggle ${crit.label}`}
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isEnabled}
+                                                                    onChange={() => handleToggleSecondary(crit.id)}
+                                                                />
+                                                                <span className="admin-toggle-slider" />
+                                                            </label>
+
+                                                            <button
+                                                                type="button"
+                                                                className="admin-icon-button"
+                                                                disabled={index === 0}
+                                                                onClick={() => handleMoveSecondaryUp(index)}
+                                                                title="Move rule up in priority"
+                                                                aria-label="Move rule up"
+                                                            >
+                                                                <ArrowUp size={14} />
+                                                            </button>
+
+                                                            <button
+                                                                type="button"
+                                                                className="admin-icon-button"
+                                                                disabled={index === secondaryCriteria.length - 1}
+                                                                onClick={() => handleMoveSecondaryDown(index)}
+                                                                title="Move rule down in priority"
+                                                                aria-label="Move rule down"
+                                                            >
+                                                                <ArrowDown size={14} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            });
+                                        })()}
                                     </div>
                                 </div>
                             </div>

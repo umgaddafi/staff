@@ -294,6 +294,52 @@ class LegacyPortfolioService
         return true;
     }
 
+    public function formatStaffDisplayName(?string $first, ?string $other = null, ?string $last = null): string
+    {
+        $first = trim((string) $first);
+        $other = trim((string) $other);
+        $last = trim((string) $last);
+
+        // If other_name is explicitly present
+        if ($other !== '') {
+            $otherWords = preg_split('/\s+/', $other);
+            $initials = [];
+            foreach ($otherWords as $w) {
+                if ($w !== '') {
+                    $initials[] = strtoupper(mb_substr($w, 0, 1)) . '.';
+                }
+            }
+            $midInitial = implode(' ', $initials);
+            return trim($first . ' ' . $midInitial . ' ' . $last);
+        }
+
+        // If other_name is empty, check if first + last has 3 words
+        $full = trim($first . ' ' . $last);
+        if ($full === '') {
+            return '';
+        }
+
+        $words = preg_split('/\s+/', $full);
+        $titles = [
+            'prof.', 'prof', 'professor', 'dr.', 'dr', 'engr.', 'engr', 'barr.', 'barr',
+            'mr.', 'mr', 'mrs.', 'mrs', 'ms.', 'ms', 'arc.', 'arc', 'pharm.', 'pharm',
+            'rev.', 'rev', 'pastor', 'mal.', 'mal', 'mallam', 'alh.', 'alh', 'alhaji', 'chief',
+            '(mrs.)', '(mrs)', '(dr.)', '(dr)'
+        ];
+        $titleParts = [];
+        while (count($words) > 1 && in_array(strtolower($words[0]), $titles)) {
+            $titleParts[] = array_shift($words);
+        }
+
+        if (count($words) === 3) {
+            $initial = strtoupper(mb_substr($words[1], 0, 1)) . '.';
+            $formatted = $words[0] . ' ' . $initial . ' ' . $words[2];
+            return count($titleParts) > 0 ? implode(' ', $titleParts) . ' ' . $formatted : $formatted;
+        }
+
+        return count($titleParts) > 0 ? implode(' ', $titleParts) . ' ' . implode(' ', $words) : implode(' ', $words);
+    }
+
     public function publicDirectory(array $filters = []): array
     {
         $query = DB::table('staff as s')
@@ -302,7 +348,7 @@ class LegacyPortfolioService
             ->leftJoin('department as d', 's.department_id', '=', 'd.department_id')
             ->leftJoin('college as c', 'd.college_id', '=', 'c.college_id')
             ->selectRaw(
-                "s.staff_id, COALESCE(s.pf_number, '') as pf_number, CONCAT(s.first_name, ' ', s.last_name) as name,
+                "s.staff_id, COALESCE(s.pf_number, '') as pf_number, s.first_name, s.other_name, s.last_name,
                 COALESCE(r.name, s.rank, 'Staff Member') as role, COALESCE(sc.name, s.category, 'Uncategorized') as category, COALESCE(r.id, 9999) as rank_level_value,
                 COALESCE(d.name, s.department, 'General') as department, COALESCE(c.name, 'University') as faculty, IFNULL(COALESCE(s.profile_photo, s.passport), '') as profile_photo"
             )
@@ -357,30 +403,92 @@ class LegacyPortfolioService
         }
         $pfCaseSql .= "ELSE 999999 END";
 
+        $secondaryCriteria = $settings['hierarchy_secondary_criteria'] ?? [
+            ['id' => 'passport_present', 'enabled' => true],
+            ['id' => 'professors', 'enabled' => true],
+            ['id' => 'associate_professors', 'enabled' => true],
+            ['id' => 'rank_seniority', 'enabled' => true],
+            ['id' => 'college_units', 'enabled' => true],
+            ['id' => 'department', 'enabled' => true],
+            ['id' => 'staff_name', 'enabled' => true],
+        ];
+        if (is_string($secondaryCriteria)) {
+            $decoded = json_decode($secondaryCriteria, true);
+            $secondaryCriteria = is_array($decoded) ? $decoded : [];
+        }
+        if (!is_array($secondaryCriteria) || empty($secondaryCriteria)) {
+            $secondaryCriteria = [
+                ['id' => 'passport_present', 'enabled' => true],
+                ['id' => 'professors', 'enabled' => true],
+                ['id' => 'associate_professors', 'enabled' => true],
+                ['id' => 'rank_seniority', 'enabled' => true],
+                ['id' => 'college_units', 'enabled' => true],
+                ['id' => 'department', 'enabled' => true],
+                ['id' => 'staff_name', 'enabled' => true],
+            ];
+        }
+
+        // Apply primary hierarchy first
+        $query->orderByRaw($pfCaseSql);
+
+        // Apply dynamic secondary criteria in the admin's chosen sequence
+        foreach ($secondaryCriteria as $crit) {
+            $critId = is_array($crit) ? ($crit['id'] ?? '') : (string)$crit;
+            $isEnabled = is_array($crit) ? (bool)($crit['enabled'] ?? true) : true;
+            if (!$isEnabled) {
+                continue;
+            }
+
+            switch ($critId) {
+                case 'passport_present':
+                    $query->orderByRaw("CASE WHEN (COALESCE(s.profile_photo, s.passport, '') != '' AND COALESCE(s.profile_photo, s.passport, '') NOT LIKE '%default%' AND COALESCE(s.profile_photo, s.passport, '') != '0') THEN 0 ELSE 1 END ASC");
+                    break;
+
+                case 'professors':
+                    $query->orderByRaw("CASE WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%professor%' AND LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) NOT LIKE '%assoc%' AND LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) NOT LIKE '%asst%' THEN 0 ELSE 1 END ASC");
+                    break;
+
+                case 'associate_professors':
+                    $query->orderByRaw("CASE WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%assoc%prof%' OR LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%reader%' THEN 0 ELSE 1 END ASC");
+                    break;
+
+                case 'rank_seniority':
+                    $query->orderByRaw("CASE 
+                        WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%senior%lecturer%' THEN 1
+                        WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%lecturer%i%' AND LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) NOT LIKE '%lecturer%ii%' THEN 2
+                        WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%lecturer%1%' THEN 2
+                        WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%lecturer%ii%' OR LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%lecturer%2%' THEN 3
+                        WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%assistant%lecturer%' OR LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%asst%lecturer%' THEN 4
+                        WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%graduate%assistant%' THEN 5
+                        ELSE 9
+                    END ASC");
+                    break;
+
+                case 'college_units':
+                    $query->orderByRaw("CASE WHEN c.name IS NOT NULL AND c.name != '' AND LOWER(c.name) NOT LIKE '%non-college%' AND LOWER(c.name) NOT LIKE '%non college%' THEN 0 ELSE 1 END ASC")
+                          ->orderByRaw("COALESCE(c.name, 'ZZZ') ASC");
+                    break;
+
+                case 'department':
+                    $query->orderByRaw("COALESCE(d.name, s.department, 'ZZZ') ASC");
+                    break;
+
+                case 'staff_name':
+                    $query->orderBy('s.first_name', 'asc')->orderBy('s.last_name', 'asc');
+                    break;
+            }
+        }
+
+        // Always tie-break with staff_id for deterministic pagination & sorting
+        $query->orderBy('s.staff_id', 'asc');
+
         $items = $query
-            ->orderByRaw($pfCaseSql)
-            ->orderByRaw("CASE WHEN (COALESCE(s.profile_photo, s.passport, '') != '' AND COALESCE(s.profile_photo, s.passport, '') NOT LIKE '%default%' AND COALESCE(s.profile_photo, s.passport, '') != '0') THEN 0 ELSE 1 END ASC")
-            ->orderByRaw("CASE 
-                WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%professor%' AND LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) NOT LIKE '%assoc%' AND LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) NOT LIKE '%asst%' THEN 1
-                WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%assoc%prof%' OR LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%reader%' THEN 2
-                WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%senior%lecturer%' THEN 3
-                WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%lecturer%i%' AND LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) NOT LIKE '%lecturer%ii%' THEN 4
-                WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%lecturer%1%' THEN 4
-                WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%lecturer%ii%' OR LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%lecturer%2%' THEN 5
-                WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%assistant%lecturer%' OR LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%asst%lecturer%' THEN 6
-                WHEN LOWER(COALESCE(r.name, s.rank COLLATE utf8mb4_unicode_ci, '')) LIKE '%graduate%assistant%' THEN 7
-                ELSE 9
-            END ASC")
-            ->orderByRaw("CASE WHEN c.name IS NOT NULL AND c.name != '' AND LOWER(c.name) NOT LIKE '%non-college%' AND LOWER(c.name) NOT LIKE '%non college%' THEN 0 ELSE 1 END ASC")
-            ->orderByRaw("COALESCE(c.name, 'ZZZ') ASC")
-            ->orderByRaw("COALESCE(d.name, s.department, 'ZZZ') ASC")
-            ->orderBy('s.first_name', 'asc')
-            ->orderBy('s.last_name', 'asc')
             ->get()
             ->map(fn ($item) => [
                 'staffId' => (int) $item->staff_id,
                 'pfNumber' => trim((string) $item->pf_number),
-                'name' => trim((string) $item->name),
+                'name' => $this->formatStaffDisplayName($item->first_name, $item->other_name, $item->last_name),
+                'fullName' => trim($item->first_name . ' ' . ($item->other_name ? $item->other_name . ' ' : '') . $item->last_name),
                 'role' => (string) $item->role,
                 'category' => (string) $item->category,
                 'department' => (string) $item->department,
@@ -399,6 +507,7 @@ class LegacyPortfolioService
                 'categories' => DB::table('staff_categories')->orderBy('id')->pluck('name')->all(),
             ],
             'hierarchyPfNumbers' => $hierarchyPfNumbers,
+            'hierarchySecondaryCriteria' => $secondaryCriteria,
         ];
     }
 
@@ -508,6 +617,15 @@ class LegacyPortfolioService
             'allow_public_directory' => true,
             'allow_cv_download' => true,
             'hierarchy_pf_numbers' => ['PF/0583', 'PF/1229', 'PF/2365', 'PF/1466'],
+            'hierarchy_secondary_criteria' => [
+                ['id' => 'passport_present', 'enabled' => true],
+                ['id' => 'professors', 'enabled' => true],
+                ['id' => 'associate_professors', 'enabled' => true],
+                ['id' => 'rank_seniority', 'enabled' => true],
+                ['id' => 'college_units', 'enabled' => true],
+                ['id' => 'department', 'enabled' => true],
+                ['id' => 'staff_name', 'enabled' => true],
+            ],
         ];
 
         try {
@@ -557,6 +675,12 @@ class LegacyPortfolioService
                     }
                     if (is_array($value)) {
                         $value = array_values(array_filter(array_map('trim', $value), fn($v) => $v !== ''));
+                    }
+                    $encodedValue = json_encode($value);
+                } elseif ($key === 'hierarchy_secondary_criteria') {
+                    if (is_string($value)) {
+                        $decoded = json_decode($value, true);
+                        $value = is_array($decoded) ? $decoded : [];
                     }
                     $encodedValue = json_encode($value);
                 } else {
@@ -1546,7 +1670,7 @@ class LegacyPortfolioService
     public function requestHistory(int $staffId): array
     {
         $staff = DB::table('staff')
-            ->select('staff_id', 'first_name', 'last_name', 'pf_number')
+            ->select('staff_id', 'first_name', 'other_name', 'last_name', 'pf_number')
             ->where('staff_id', $staffId)
             ->first();
 
@@ -1557,6 +1681,10 @@ class LegacyPortfolioService
         $logs = DB::table('change_log as cl')
             ->join('user_account as ua', 'cl.user_id', '=', 'ua.user_id')
             ->where('ua.staff_id', $staffId)
+            ->where(function ($sub) {
+                $sub->where('ua.role', 'Staff')
+                    ->orWhereNull('ua.role');
+            })
             ->orderByDesc('cl.timestamp')
             ->select('cl.*', 'ua.username')
             ->get()
@@ -1571,7 +1699,7 @@ class LegacyPortfolioService
         return [
             'staff' => [
                 'staffId' => (int) $staff->staff_id,
-                'name' => trim($staff->first_name . ' ' . $staff->last_name),
+                'name' => $this->formatStaffDisplayName($staff->first_name, $staff->other_name ?? null, $staff->last_name),
                 'staffNumber' => (string) ($staff->pf_number ?? ''),
                 'pfNumber' => (string) ($staff->pf_number ?? ''),
             ],
@@ -1585,7 +1713,10 @@ class LegacyPortfolioService
             ->leftJoin('user_account as ua', 'cl.user_id', '=', 'ua.user_id')
             ->leftJoin('staff as s', 'ua.staff_id', '=', 's.staff_id')
             ->where('cl.log_id', $logId)
-            ->select('cl.*', 'ua.username', 's.staff_id', 's.first_name', 's.last_name', 's.pf_number', 's.profile_photo')
+            ->where(function ($sub) {
+                $sub->where('ua.role', 'Staff')->orWhereNull('ua.role');
+            })
+            ->select('cl.*', 'ua.username', 's.staff_id', 's.first_name', 's.other_name', 's.last_name', 's.pf_number', 's.profile_photo')
             ->first();
 
         if (! $log) {
@@ -1596,16 +1727,27 @@ class LegacyPortfolioService
         $data['comparison'] = $this->buildRequestComparison($data, (int) ($log->staff_id ?? 0));
 
         return [
-            'staff' => $this->mapStaffAccessRow((object) $staffRow),
-            'log' => $this->mapAuditLogDetailRow((object) $logRow),
+            'staff' => [
+                'staffId' => (int) ($log->staff_id ?? 0),
+                'name' => $this->formatStaffDisplayName($log->first_name ?? '', $log->other_name ?? null, $log->last_name ?? ''),
+                'staffNumber' => (string) ($log->pf_number ?? ''),
+                'pfNumber' => (string) ($log->pf_number ?? ''),
+                'profilePhoto' => (string) ($log->profile_photo ?? ''),
+            ],
+            'log' => $data,
         ];
     }
 
     public function approveAllRequests(int $adminUserId): int
     {
-        $pendingLogs = DB::table('change_log')
-            ->where('status', 'Pending')
-            ->orderBy('log_id', 'asc')
+        $pendingLogs = DB::table('change_log as cl')
+            ->join('user_account as ua', 'cl.user_id', '=', 'ua.user_id')
+            ->where('cl.status', 'Pending')
+            ->where(function ($sub) {
+                $sub->where('ua.role', 'Staff')->orWhereNull('ua.role');
+            })
+            ->orderBy('cl.log_id', 'asc')
+            ->select('cl.*')
             ->get();
 
         $count = 0;
@@ -1670,7 +1812,13 @@ class LegacyPortfolioService
     {
         return [
             'stats' => [
-                'pending' => DB::table('change_log')->where('status', 'Pending')->count(),
+                'pending' => DB::table('change_log as cl')
+                    ->join('user_account as ua', 'cl.user_id', '=', 'ua.user_id')
+                    ->where('cl.status', 'Pending')
+                    ->where(function ($sub) {
+                        $sub->where('ua.role', 'Staff')->orWhereNull('ua.role');
+                    })
+                    ->count(),
                 'staff' => DB::table('staff')->where('is_active', 1)->count(),
                 'publications' => DB::table('publication')->count(),
             ],
@@ -1678,16 +1826,19 @@ class LegacyPortfolioService
                 ->leftJoin('user_account as ua', 'cl.user_id', '=', 'ua.user_id')
                 ->leftJoin('staff as s', 'ua.staff_id', '=', 's.staff_id')
                 ->where('cl.status', 'Pending')
+                ->where(function ($sub) {
+                    $sub->where('ua.role', 'Staff')->orWhereNull('ua.role');
+                })
                 ->orderBy('cl.timestamp')
                 ->limit(5)
-                ->select('cl.log_id', 'cl.entity_name', 'cl.action', 'cl.timestamp', 's.first_name', 's.last_name')
+                ->select('cl.log_id', 'cl.entity_name', 'cl.action', 'cl.timestamp', 's.first_name', 's.other_name', 's.last_name')
                 ->get()
                 ->map(fn ($row) => [
                     'logId' => (int) $row->log_id,
                     'entityName' => (string) $row->entity_name,
                     'action' => (string) $row->action,
                     'timestamp' => (string) $row->timestamp,
-                    'staffName' => trim(((string) $row->first_name) . ' ' . ((string) $row->last_name)),
+                    'staffName' => $this->formatStaffDisplayName($row->first_name ?? '', $row->other_name ?? null, $row->last_name ?? ''),
                 ])
                 ->all(),
         ];
@@ -1825,16 +1976,29 @@ class LegacyPortfolioService
 
     private function requestsSummary(string $search = ''): array
     {
+        $pendingStaffIds = DB::table('change_log as cl')
+            ->join('user_account as ua', 'cl.user_id', '=', 'ua.user_id')
+            ->where('cl.status', 'Pending')
+            ->where(function ($sub) {
+                $sub->where('ua.role', 'Staff')->orWhereNull('ua.role');
+            })
+            ->select('ua.staff_id')
+            ->distinct();
+
         $query = DB::table('change_log as cl')
             ->join('user_account as ua', 'cl.user_id', '=', 'ua.user_id')
             ->join('staff as s', 'ua.staff_id', '=', 's.staff_id')
+            ->whereIn('s.staff_id', $pendingStaffIds)
+            ->where(function ($sub) {
+                $sub->where('ua.role', 'Staff')->orWhereNull('ua.role');
+            })
             ->selectRaw(
-                's.staff_id, s.first_name, s.last_name, s.pf_number,
+                's.staff_id, s.first_name, s.other_name, s.last_name, s.pf_number,
                 COUNT(cl.log_id) as total_requests,
                 SUM(CASE WHEN cl.status = "Pending" THEN 1 ELSE 0 END) as pending_requests,
-                MAX(cl.timestamp) as last_request_at'
+                MAX(CASE WHEN cl.status = "Pending" THEN cl.timestamp ELSE NULL END) as last_request_at'
             )
-            ->groupBy('s.staff_id', 's.first_name', 's.last_name', 's.pf_number')
+            ->groupBy('s.staff_id', 's.first_name', 's.other_name', 's.last_name', 's.pf_number')
             ->orderByDesc('last_request_at');
 
         if ($search !== '') {
@@ -1842,13 +2006,14 @@ class LegacyPortfolioService
                 $subQuery
                     ->where('s.first_name', 'like', '%' . $search . '%')
                     ->orWhere('s.last_name', 'like', '%' . $search . '%')
+                    ->orWhere('s.other_name', 'like', '%' . $search . '%')
                     ->orWhere('s.pf_number', 'like', '%' . $search . '%');
             });
         }
 
         return $query->get()->map(fn ($row) => [
             'staffId' => (int) $row->staff_id,
-            'name' => trim($row->first_name . ' ' . $row->last_name),
+            'name' => $this->formatStaffDisplayName($row->first_name, $row->other_name ?? null, $row->last_name),
             'staffNumber' => (string) ($row->pf_number ?? ''),
             'pfNumber' => (string) ($row->pf_number ?? ''),
             'totalRequests' => (int) $row->total_requests,

@@ -38,3 +38,32 @@ export function formatBytes(bytes) {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
+export function formatStaffDisplayName(nameStr) {
+    if (!nameStr || typeof nameStr !== 'string') return '';
+    const trimmed = nameStr.trim();
+    if (!trimmed) return '';
+
+    const words = trimmed.split(/\s+/);
+    if (words.length <= 1) return trimmed;
+
+    const titles = new Set([
+        'prof.', 'prof', 'professor', 'dr.', 'dr', 'engr.', 'engr', 'barr.', 'barr',
+        'mr.', 'mr', 'mrs.', 'mrs', 'ms.', 'ms', 'arc.', 'arc', 'pharm.', 'pharm',
+        'rev.', 'rev', 'pastor', 'mal.', 'mal', 'mallam', 'alh.', 'alh', 'alhaji', 'chief',
+        '(mrs.)', '(mrs)', '(dr.)', '(dr)'
+    ]);
+
+    const titleParts = [];
+    while (words.length > 1 && titles.has(words[0].toLowerCase())) {
+        titleParts.push(words.shift());
+    }
+
+    if (words.length === 3) {
+        const midInitial = words[1].charAt(0).toUpperCase() + '.';
+        const formatted = `${words[0]} ${midInitial} ${words[2]}`;
+        return titleParts.length > 0 ? `${titleParts.join(' ')} ${formatted}` : formatted;
+    }
+
+    return titleParts.length > 0 ? `${titleParts.join(' ')} ${words.join(' ')}` : words.join(' ');
+}
+

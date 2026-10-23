@@ -54,7 +54,6 @@ function AdminPortalPage({ user, onLogout, showFlash }) {
             items: [
                 { to: '/admin/staff', label: 'Staff Directory', navLabel: 'Staff Directory', icon: 'staff' },
                 { to: '/admin/access', label: 'User Accounts & Roles', navLabel: 'User Accounts & Roles', icon: 'roles' },
-                { to: '/admin/permissions', label: 'Permission Matrix', navLabel: 'Permission Matrix', icon: 'settings' },
             ],
         },
         {

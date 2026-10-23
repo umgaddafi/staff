@@ -9480,46 +9480,87 @@
 .admin-hierarchy-tiers {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.65rem;
 }
 
 .admin-hierarchy-tier-item {
     display: flex;
     gap: 0.75rem;
-    align-items: flex-start;
-    padding: 0.65rem 0.75rem;
+    align-items: center;
+    padding: 0.65rem 0.85rem;
     background: #ffffff;
     border-radius: 8px;
     border: 1px solid #e2e8f0;
+    transition: all 0.2s ease;
+}
+
+.admin-hierarchy-tier-item:hover {
+    border-color: #006633;
+    box-shadow: 0 2px 6px rgba(0, 102, 51, 0.08);
+}
+
+.admin-hierarchy-tier-item.is-disabled {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+    opacity: 0.65;
 }
 
 .admin-hierarchy-tier-number {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.5rem;
-    height: 1.5rem;
+    width: 1.6rem;
+    height: 1.6rem;
     border-radius: 999px;
     background: #006633;
     color: #ffffff;
     font-size: 0.75rem;
     font-weight: 700;
     flex-shrink: 0;
-    margin-top: 2px;
+}
+
+.admin-hierarchy-tier-number.is-disabled {
+    background: #94a3b8;
+    color: #ffffff;
+    font-size: 0.68rem;
+}
+
+.admin-hierarchy-tier-body {
+    flex: 1;
+    min-width: 0;
 }
 
 .admin-hierarchy-tier-body strong {
-    display: block;
-    font-size: 0.82rem;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.84rem;
     color: #0f172a;
     margin-bottom: 0.15rem;
 }
 
 .admin-hierarchy-tier-body p {
     margin: 0;
-    font-size: 0.76rem;
+    font-size: 0.75rem;
     color: #64748b;
-    line-height: 1.4;
+    line-height: 1.38;
+}
+
+.admin-toggle-switch-sm {
+    width: 34px !important;
+    height: 18px !important;
+    flex-shrink: 0;
+}
+
+.admin-toggle-switch-sm .admin-toggle-slider:before {
+    height: 14px !important;
+    width: 14px !important;
+    left: 2px !important;
+    bottom: 2px !important;
+}
+
+.admin-toggle-switch-sm input:checked + .admin-toggle-slider:before {
+    transform: translateX(16px) !important;
 }
 
 /* Direct Logout Buttons */

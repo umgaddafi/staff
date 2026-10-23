@@ -8,7 +8,7 @@ import { BackToTop } from '../../components/common/BackToTop';
 import { PublicLayout } from '../../components/layouts/PublicLayout';
 import { useStaffDepartmentOptions } from '../../hooks/useStaffDepartmentOptions';
 import { api } from '../../lib/api';
-import { getErrorMessage } from '../../utils/formatters';
+import { getErrorMessage, formatStaffDisplayName } from '../../utils/formatters';
 
 const PRIORITY_PF_NUMBERS = ['PF/0583','PF/1229', 'PF/2365', 'PF/1466'];
 
@@ -124,9 +124,14 @@ function PublicDirectoryPage({ user }) {
             || directory.items.some((item) => item.faculty === filters.faculty && item.department === department)
     ));
 
-    const filteredItems = directory.items.filter((item) => {
+    const filteredItems = directory.items.map((item) => ({
+        ...item,
+        displayName: formatStaffDisplayName(item.name),
+    })).filter((item) => {
         const matchesSearch = normalizedSearch === ''
-            || item.name.toLowerCase().includes(normalizedSearch)
+            || (item.displayName && item.displayName.toLowerCase().includes(normalizedSearch))
+            || (item.name && item.name.toLowerCase().includes(normalizedSearch))
+            || (item.fullName && item.fullName.toLowerCase().includes(normalizedSearch))
             || item.role.toLowerCase().includes(normalizedSearch)
             || (item.pfNumber && item.pfNumber.toLowerCase().includes(normalizedSearch));
         const matchesFaculty = filters.faculty === '' || item.faculty === filters.faculty;
@@ -324,11 +329,11 @@ function PublicDirectoryPage({ user }) {
                         {visibleItems.map((item) => (
                             <Link className="directory-staff-card" key={item.staffId} to={`/portfolio/${item.staffId}`}>
                                 <div className="directory-staff-image-wrap">
-                                    <Avatar name={item.name} photoUrl={item.profilePhotoUrl} className="directory-staff-image" imageFit="fill" />
+                                    <Avatar name={item.displayName || item.name} photoUrl={item.profilePhotoUrl} className="directory-staff-image" imageFit="fill" />
                                 </div>
                                 <div className="directory-staff-card-body">
                                     <span className="directory-staff-role">{item.role || 'Academic Staff'}</span>
-                                    <h3 className="directory-staff-name">{item.name}</h3>
+                                    <h3 className="directory-staff-name">{item.displayName || item.name}</h3>
                                     <div className="directory-staff-department">{item.department}</div>
                                 </div>
                                 <div className="directory-staff-link">View Profile</div>
