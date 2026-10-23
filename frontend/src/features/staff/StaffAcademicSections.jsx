@@ -16,7 +16,7 @@ import {
 import { StaffModal, StaffPageHeader } from './StaffShared';
 import { useConfirm } from '../../contexts/ConfirmContext';
 
-function CoursesSection({ items, courseOptions, onLink, onDelete }) {
+function CoursesSection({ items, courseOptions = [], onLink, onDelete }) {
     const [form, setForm] = useState(courseLinkDefaults);
     const [showModal, setShowModal] = useState(false);
     const { isPending, runPending } = usePendingAction();
@@ -42,12 +42,33 @@ function CoursesSection({ items, courseOptions, onLink, onDelete }) {
         setForm(courseLinkDefaults());
     }
 
+    function handleCodeChange(event) {
+        const val = event.target.value;
+        const matching = (courseOptions || []).find(
+            (c) => (c.code || '').toLowerCase().replace(/\s+/g, '') === val.toLowerCase().replace(/\s+/g, '')
+        );
+
+        let detectedLevel = null;
+        const digitMatch = val.match(/(\d)/);
+        if (digitMatch) {
+            detectedLevel = `${digitMatch[1]}00`;
+        }
+
+        setForm((current) => ({
+            ...current,
+            course_code: val,
+            course_title: matching ? matching.title : current.course_title,
+            level: matching ? String(matching.level) : (detectedLevel || current.level || '100'),
+            course_id: matching ? matching.id : '',
+        }));
+    }
+
     return (
         <>
             <StaffPageHeader
                 title="Teaching Portfolio"
                 copy="Manage the courses you have facilitated across academic sessions."
-                action={<button type="button" className="staff-button staff-button-dark" onClick={openModal}>Link Course</button>}
+                action={<button type="button" className="staff-button staff-button-primary" onClick={openModal}>+ Add Course</button>}
             />
             {items.length === 0 ? (
                 <div className="staff-empty-card">
@@ -92,7 +113,7 @@ function CoursesSection({ items, courseOptions, onLink, onDelete }) {
             )}
             <StaffModal
                 open={showModal}
-                title="Link Course to Session"
+                title="Add Course to Portfolio"
                 onClose={closeModal}
                 actions={(
                     <>
@@ -110,25 +131,80 @@ function CoursesSection({ items, courseOptions, onLink, onDelete }) {
                         closeModal();
                     }
                 }}>
-                    <Field label="Select Academic Session">
+                    <Field label="Academic Session *">
                         <select className="select" value={form.session} onChange={(event) => setForm((current) => ({ ...current, session: event.target.value }))} required>
                             {sessionOptions.map((session) => (
                                 <option key={session} value={session}>{session}</option>
                             ))}
                         </select>
                     </Field>
-                    <Field label="Course">
-                        <select className="select" value={form.course_id} onChange={(event) => setForm((current) => ({ ...current, course_id: event.target.value }))} required>
-                            <option value="">Search for course...</option>
-                            {courseOptions.map((course) => (
-                                <option key={course.id} value={course.id}>{course.code} - {course.title} ({course.level}L)</option>
-                            ))}
-                        </select>
+
+                    <div className="staff-modal-grid">
+                        <Field label="Course Code *">
+                            <input
+                                className="input"
+                                type="text"
+                                list="course-code-suggestions"
+                                placeholder="e.g. CSC 512, MTH 101"
+                                value={form.course_code || ''}
+                                onChange={handleCodeChange}
+                                required
+                            />
+                            {courseOptions && courseOptions.length > 0 && (
+                                <datalist id="course-code-suggestions">
+                                    {courseOptions.map((course) => (
+                                        <option key={course.id || course.code} value={course.code}>
+                                            {course.title} ({course.level}L)
+                                        </option>
+                                    ))}
+                                </datalist>
+                            )}
+                        </Field>
+
+                        <Field label="Course Level *">
+                            <select
+                                className="select"
+                                value={form.level || '100'}
+                                onChange={(event) => setForm((current) => ({ ...current, level: event.target.value }))}
+                                required
+                            >
+                                <option value="100">100L (Undergraduate)</option>
+                                <option value="200">200L (Undergraduate)</option>
+                                <option value="300">300L (Undergraduate)</option>
+                                <option value="400">400L (Undergraduate)</option>
+                                <option value="500">500L (Undergraduate)</option>
+                                <option value="600">600L (Undergraduate)</option>
+                                <option value="700">700L (Postgraduate)</option>
+                                <option value="800">800L (Doctoral)</option>
+                            </select>
+                        </Field>
+                    </div>
+
+                    <Field label="Course Title *">
+                        <input
+                            className="input"
+                            type="text"
+                            placeholder="e.g. Advanced Machine Learning Systems"
+                            value={form.course_title || ''}
+                            onChange={(event) => setForm((current) => ({ ...current, course_title: event.target.value }))}
+                            required
+                        />
                     </Field>
                 </form>
             </StaffModal>
         </>
     );
+}
+
+function formatCurrencyInput(val) {
+    if (!val && val !== 0) return '';
+    const cleaned = String(val).replace(/[^0-9.]/g, '');
+    const parts = cleaned.split('.');
+    const integerPart = parts[0];
+    const decimalPart = parts.length > 1 ? `.${parts.slice(1).join('')}` : '';
+    if (!integerPart && !decimalPart) return '';
+    const formattedInteger = integerPart ? Number(integerPart).toLocaleString('en-US') : '0';
+    return `${formattedInteger}${decimalPart}`;
 }
 
 function GrantsSection({ items, onCreate, onDelete }) {
@@ -226,7 +302,34 @@ function GrantsSection({ items, onCreate, onDelete }) {
                     <Field label="Project Title"><input className="input" value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} required /></Field>
                     <div className="staff-modal-grid is-grant">
                         <Field label="Sponsor"><input className="input" value={form.sponsor} onChange={(event) => setForm((current) => ({ ...current, sponsor: event.target.value }))} required /></Field>
-                        <Field label="Amount (Naira)"><input className="input" value={form.amount} onChange={(event) => setForm((current) => ({ ...current, amount: event.target.value }))} required /></Field>
+                        <Field label="Amount (₦)">
+                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                <span style={{
+                                    position: 'absolute',
+                                    left: '0.85rem',
+                                    fontWeight: 700,
+                                    color: '#0f766e',
+                                    fontSize: '1rem',
+                                    pointerEvents: 'none',
+                                    userSelect: 'none',
+                                }}>
+                                    ₦
+                                </span>
+                                <input
+                                    className="input"
+                                    style={{ paddingLeft: '2.2rem', fontWeight: 600, letterSpacing: '0.02em' }}
+                                    type="text"
+                                    inputMode="decimal"
+                                    placeholder="0.00"
+                                    value={form.amount ? formatCurrencyInput(form.amount) : ''}
+                                    onChange={(event) => {
+                                        const raw = event.target.value.replace(/[^0-9.]/g, '');
+                                        setForm((current) => ({ ...current, amount: raw }));
+                                    }}
+                                    required
+                                />
+                            </div>
+                        </Field>
                     </div>
                     <div className="staff-modal-grid">
                         <Field label="Start Year"><input className="input" type="number" value={form.start} onChange={(event) => setForm((current) => ({ ...current, start: event.target.value }))} required /></Field>

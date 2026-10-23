@@ -775,12 +775,49 @@ class LegacyPortfolioService
         });
     }
 
-    public function linkCourse(int $userId, int $staffId, int $courseId, string $session): void
+    public function linkCourse(int $userId, int $staffId, ?int $courseId, string $session, ?string $courseCode = null, ?string $courseTitle = null, ?int $level = null): void
     {
         $session = trim($session);
+        if ($session === '') {
+            throw new RuntimeException('Academic session is required.');
+        }
 
-        if ($courseId <= 0 || $session === '') {
-            throw new RuntimeException('Course and session are required.');
+        $courseCode = trim((string) ($courseCode ?? ''));
+        $courseTitle = trim((string) ($courseTitle ?? ''));
+
+        if ($courseCode !== '') {
+            $normalizedCode = strtoupper($courseCode);
+
+            if (!$level || $level <= 0) {
+                if (preg_match('/(\d)/', $normalizedCode, $matches)) {
+                    $level = ((int) $matches[1]) * 100;
+                } else {
+                    $level = 100;
+                }
+            }
+
+            $compactCode = strtolower(str_replace(' ', '', $normalizedCode));
+            $existing = DB::table('course')
+                ->whereRaw("REPLACE(LOWER(course_code), ' ', '') = ?", [$compactCode])
+                ->first();
+
+            if ($existing) {
+                $courseId = (int) $existing->course_id;
+                if ($courseTitle !== '' && (empty($existing->course_title) || $existing->course_title === $existing->course_code)) {
+                    DB::table('course')->where('course_id', $courseId)->update([
+                        'course_title' => $courseTitle,
+                        'level' => $level,
+                    ]);
+                }
+            } else {
+                $courseId = (int) DB::table('course')->insertGetId([
+                    'course_code' => $normalizedCode,
+                    'course_title' => $courseTitle !== '' ? $courseTitle : $normalizedCode,
+                    'level' => $level,
+                ]);
+            }
+        } elseif (!$courseId || $courseId <= 0) {
+            throw new RuntimeException('Course code and title are required.');
         }
 
         $inserted = DB::table('staff_course')->insertOrIgnore([
@@ -790,7 +827,7 @@ class LegacyPortfolioService
         ]);
 
         if ($inserted === 0) {
-            throw new RuntimeException('This course is already linked for the selected session.');
+            throw new RuntimeException('This course is already linked to your portfolio for the selected session.');
         }
 
         $this->createChangeLog($userId, 'staff_course', $staffId, [

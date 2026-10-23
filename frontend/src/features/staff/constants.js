@@ -87,6 +87,9 @@ function courseLinkDefaults() {
     const year = new Date().getFullYear();
     return {
         course_id: '',
+        course_code: '',
+        course_title: '',
+        level: '100',
         session: `${year}/${year + 1}`,
     };
 }

@@ -120,11 +120,22 @@ class StaffController extends Controller
     public function linkCourse(Request $request, LegacyPortfolioService $service): JsonResponse
     {
         $payload = $request->validate([
-            'course_id' => ['required', 'integer'],
+            'course_id' => ['nullable', 'integer'],
+            'course_code' => ['nullable', 'string', 'max:50'],
+            'course_title' => ['nullable', 'string', 'max:255'],
+            'level' => ['nullable'],
             'session' => ['required', 'string', 'max:20'],
         ]);
 
-        $service->linkCourse($this->userId($request), $this->staffId($request), (int) $payload['course_id'], $payload['session']);
+        $service->linkCourse(
+            $this->userId($request),
+            $this->staffId($request),
+            !empty($payload['course_id']) ? (int) $payload['course_id'] : null,
+            $payload['session'],
+            $payload['course_code'] ?? null,
+            $payload['course_title'] ?? null,
+            !empty($payload['level']) ? (int) $payload['level'] : null
+        );
 
         return response()->json(['message' => 'Course linked successfully.']);
     }
