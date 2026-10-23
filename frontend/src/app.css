@@ -70,8 +70,9 @@
     --warm-rgb: 212, 175, 55;
     --accent-tint-rgb: 163, 200, 172;
     --success-rgb: 35, 116, 70;
-    --danger-rgb: 170, 77, 75;
     --color-danger: var(--color-danger-500);
+    --admin-shell-green: #065f46;
+    --admin-shell-green-deep: #064e3b;
 }
 
 @layer base {
@@ -4714,14 +4715,14 @@
 }
 
 .admin-button-primary {
-    background: var(--admin-shell-green);
-    border-color: var(--admin-shell-green);
+    background: var(--admin-shell-green, #065f46);
+    border-color: var(--admin-shell-green, #065f46);
     color: #ffffff;
 }
 
 .admin-button-primary:hover {
-    background: var(--admin-shell-green-deep);
-    border-color: var(--admin-shell-green-deep);
+    background: var(--admin-shell-green-deep, #064e3b);
+    border-color: var(--admin-shell-green-deep, #064e3b);
     color: #ffffff;
 }
 

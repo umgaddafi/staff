@@ -55,11 +55,25 @@ export function ConfirmProvider({ children }) {
                 onClose={isLoading ? undefined : confirmState.onCancel}
                 actions={(
                     <>
-                        <button type="button" className="admin-button admin-button-secondary" onClick={confirmState.onCancel} disabled={isLoading}>Cancel</button>
+                        <button
+                            type="button"
+                            className="admin-button admin-button-secondary"
+                            style={{ background: '#ffffff', border: '1px solid #cbd5e1', color: '#475569', cursor: isLoading ? 'not-allowed' : 'pointer' }}
+                            onClick={confirmState.onCancel}
+                            disabled={isLoading}
+                        >
+                            Cancel
+                        </button>
                         <button 
                             type="button" 
-                            className={`admin-button ${confirmState.danger ? 'admin-button-primary' : 'admin-button-primary'}`} 
-                            style={confirmState.danger ? { background: 'var(--color-danger)', borderColor: 'var(--color-danger)' } : {}} 
+                            className={`admin-button ${confirmState.danger ? 'admin-button-danger' : 'admin-button-primary'}`} 
+                            style={{
+                                background: confirmState.danger ? '#dc2626' : '#065f46',
+                                borderColor: confirmState.danger ? '#dc2626' : '#065f46',
+                                color: '#ffffff',
+                                minWidth: '100px',
+                                cursor: isLoading ? 'not-allowed' : 'pointer',
+                            }} 
                             onClick={confirmState.onConfirm}
                             disabled={isLoading}
                         >
