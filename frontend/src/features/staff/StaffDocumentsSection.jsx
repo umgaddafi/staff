@@ -96,7 +96,7 @@ function StaffDocumentsSection({ initialDocuments = [] }) {
             try {
                 const res = await api('/api/staff/documents', {
                     method: 'POST',
-                    body: formData,
+                    data: formData,
                 });
 
                 setStatusMessage(res.message || 'Document uploaded successfully.');

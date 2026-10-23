@@ -21,6 +21,12 @@ export function formatMoney(value) {
 }
 
 export function getErrorMessage(error) {
+    if (error?.payload?.errors && typeof error.payload.errors === 'object') {
+        const messages = Object.values(error.payload.errors).flat().filter(Boolean);
+        if (messages.length > 0) {
+            return messages.join(' ');
+        }
+    }
     return error?.payload?.message || error?.message || 'Something went wrong. Please try again.';
 }
 

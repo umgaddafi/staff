@@ -30,14 +30,24 @@ function normalizeErrorMessage(error, payload) {
 }
 
 export async function api(path, options = {}) {
-    const { method = 'GET', data, formData } = options;
+    const { method = 'GET', data, formData, body, headers = {} } = options;
+    const requestData = formData instanceof FormData
+        ? formData
+        : (body instanceof FormData ? body : (formData ?? body ?? data));
+
+    const requestHeaders = { ...headers };
+    if (requestData instanceof FormData) {
+        // Let axios and the browser generate the multipart/form-data boundary automatically
+        delete requestHeaders['Content-Type'];
+        delete requestHeaders['content-type'];
+    }
 
     try {
         const response = await client.request({
             url: path,
             method,
-            data: formData instanceof FormData ? formData : data,
-            headers: formData instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
+            data: requestData,
+            headers: requestHeaders,
         });
 
         return response.data;
