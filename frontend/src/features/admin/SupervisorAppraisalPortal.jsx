@@ -1620,7 +1620,7 @@ export function SupervisorAppraisalPortal({ user, onLogout }) {
                             </div>
                             <button
                                 onClick={onLogout}
-                                title="Sign Out"
+                                title="Logout"
                                 style={{ background: 'transparent', border: 'none', color: '#fca5a5', cursor: 'pointer', padding: '4px' }}
                             >
                                 <LogOut size={18} />
@@ -1629,7 +1629,7 @@ export function SupervisorAppraisalPortal({ user, onLogout }) {
                     ) : (
                         <button
                             onClick={onLogout}
-                            title="Sign Out"
+                            title="Logout"
                             style={{ width: '100%', background: 'transparent', border: 'none', color: '#fca5a5', cursor: 'pointer', display: 'flex', justifyContent: 'center', padding: '8px 0' }}
                         >
                             <LogOut size={20} />

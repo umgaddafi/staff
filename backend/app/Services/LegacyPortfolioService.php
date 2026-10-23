@@ -1848,6 +1848,10 @@ class LegacyPortfolioService
             (string) ($staff['last_name'] ?? ''),
         ])));
 
+        $photo = !empty($staff['profile_photo']) ? $staff['profile_photo'] : (!empty($staff['passport']) ? $staff['passport'] : null);
+        $staff['profile_photo_url'] = $photo ? $this->fileUrl('uploads/' . ltrim((string) $photo, '/')) : null;
+        $staff['passport_url'] = !empty($staff['passport']) ? $this->fileUrl('uploads/' . ltrim((string) $staff['passport'], '/')) : $staff['profile_photo_url'];
+
         return $staff;
     }
 

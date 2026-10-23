@@ -66,12 +66,18 @@ function ProfileSection({ staff, ranks, departments = [], onSubmit }) {
         }
     }
 
+    const resolvedPhotoUrl = previewUrl
+        || staff.profile_photo_url
+        || staff.passport_url
+        || (staff.passport ? (staff.passport.startsWith('http') ? staff.passport : `/uploads/${staff.passport.replace(/^\/?uploads\//, '')}`) : null)
+        || (staff.profile_photo ? (staff.profile_photo.startsWith('http') ? staff.profile_photo : `/uploads/${staff.profile_photo.replace(/^\/?uploads\//, '')}`) : null);
+
     return (
         <form className="staff-profile-layout" onSubmit={submit}>
             <div className="staff-profile-shell">
                 <aside className="staff-profile-summary">
                     <div className="staff-profile-avatar-wrap">
-                        <Avatar name={staff.full_name || `${staff.first_name || ''} ${staff.last_name || ''}`.trim()} photoUrl={previewUrl || staff.profile_photo_url} className="staff-profile-avatar" />
+                        <Avatar name={staff.full_name || `${staff.first_name || ''} ${staff.last_name || ''}`.trim()} photoUrl={resolvedPhotoUrl} className="staff-profile-avatar" />
                         <label className="staff-profile-avatar-edit" htmlFor="profile-photo-upload" title="Upload new photo (max 250 KB)">
                             <span aria-hidden="true">+</span>
                         </label>
@@ -96,6 +102,10 @@ function ProfileSection({ staff, ranks, departments = [], onSubmit }) {
                     <p>{staff.rank_name || 'Not Set'}</p>
                     <div className="staff-profile-meta">
                         <div>
+                            <span>PF No:</span>
+                            <strong>{staff.pf_number || staff.pfNumber || staff.staff_number || staff.staffNumber || 'Not Assigned'}</strong>
+                        </div>
+                        <div>
                             <span>Primary Department</span>
                             <strong>{staff.department_name || 'Not Set'}</strong>
                         </div>
@@ -115,6 +125,16 @@ function ProfileSection({ staff, ranks, departments = [], onSubmit }) {
                             <p>Profile edits save immediately. Rank and department changes require admin approval.</p>
                         </div>
                         <div className="staff-form-grid is-profile">
+                            <Field label="PF No:">
+                                <input
+                                    className="input"
+                                    value={staff.pf_number || staff.pfNumber || staff.staff_number || staff.staffNumber || 'Not Assigned'}
+                                    readOnly
+                                    disabled
+                                    style={{ backgroundColor: '#f1f5f9', color: '#334155', fontWeight: 600, cursor: 'not-allowed', border: '1px solid #cbd5e1' }}
+                                    title="PF Number is permanent and read-only."
+                                />
+                            </Field>
                             <Field label="First Name"><input className="input" value={form.first_name || ''} onChange={(event) => updateField('first_name', event.target.value)} required /></Field>
                             <Field label="Other Names"><input className="input" value={form.other_name || ''} onChange={(event) => updateField('other_name', event.target.value)} placeholder="Optional" /></Field>
                             <Field label="Last Name"><input className="input" value={form.last_name || ''} onChange={(event) => updateField('last_name', event.target.value)} required /></Field>
@@ -163,7 +183,6 @@ function ProfileSection({ staff, ranks, departments = [], onSubmit }) {
                         <Field label="Biography">
                             <textarea className="textarea" rows={6} value={form.biography || ''} onChange={(event) => updateField('biography', event.target.value)} placeholder="Share your academic journey..." />
                         </Field>
-                        <p className="staff-form-note">Tip: Highlight research interests and key teaching philosophies.</p>
                     </div>
                     <div className="profile-form-bottom-actions">
                         <button className="staff-button staff-button-primary" type="submit" disabled={isSaving} style={{ minWidth: '180px', padding: '0.75rem 1.75rem', fontSize: '1rem', fontWeight: 700 }}>

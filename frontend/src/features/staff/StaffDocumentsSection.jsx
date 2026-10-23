@@ -245,7 +245,7 @@ function StaffDocumentsSection({ initialDocuments = [] }) {
                                         className="staff-button staff-button-secondary"
                                         style={{ flex: 1, textAlign: 'center', padding: '0.4rem 0.6rem', fontSize: '0.82rem' }}
                                     >
-                                        View / Open
+                                        View
                                     </a>
                                 ) : null}
                                 <button
