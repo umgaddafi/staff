@@ -25,7 +25,8 @@ class AdminController extends Controller
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', 'max:150'],
-            'staff_number' => ['required', 'string', 'max:50'],
+            'pf_number' => ['nullable', 'string', 'max:50'],
+            'staff_number' => ['nullable', 'string', 'max:50'],
             'department_id' => ['required', 'integer'],
             'rank_id' => ['required', 'integer'],
         ]);

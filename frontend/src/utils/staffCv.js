@@ -73,7 +73,7 @@ function downloadStaffCv(profile, user) {
     }
 
     const staff = profile?.staff || {};
-    const fullName = staff.full_name || [staff.title, staff.first_name, staff.last_name].filter(Boolean).join(' ') || user?.name || 'Staff';
+    const fullName = staff.full_name || [staff.first_name, staff.other_name, staff.last_name].filter(Boolean).join(' ') || user?.name || 'Staff';
     const heading = escapeHtml(fullName);
     const monogram = escapeHtml(initials(fullName));
     const roleLine = [
@@ -90,7 +90,7 @@ function downloadStaffCv(profile, user) {
         { label: 'Academic Rank', value: staff.rank_name || 'Academic Staff' },
         { label: 'Department', value: staff.department_name || 'Not set' },
         { label: 'College / Faculty', value: staff.college_name || 'Not set' },
-        { label: 'Staff Number', value: staff.staff_number || user?.staffNumber || 'Not assigned' },
+        { label: 'PF Number', value: staff.pf_number || staff.staff_number || user?.pfNumber || user?.staffNumber || 'Not assigned' },
         { label: 'Office Location', value: staff.office_location || 'Not specified' },
     ];
     const contactFacts = [

@@ -177,17 +177,15 @@ class LegacySchemaManager
             $db->statement("ALTER TABLE staff MODIFY COLUMN email VARCHAR(255) NULL");
             $db->statement("ALTER TABLE staff MODIFY COLUMN department_id BIGINT(20) NULL");
             $db->statement("ALTER TABLE staff MODIFY COLUMN rank_id BIGINT(20) UNSIGNED NULL");
-            $db->statement("ALTER TABLE staff MODIFY COLUMN staff_number VARCHAR(255) NOT NULL");
             $db->statement("ALTER TABLE staff MODIFY COLUMN first_name VARCHAR(255) NOT NULL");
             $db->statement("ALTER TABLE staff MODIFY COLUMN last_name VARCHAR(255) NOT NULL");
-            $db->statement("ALTER TABLE staff MODIFY COLUMN middle_name VARCHAR(255) NULL");
             $db->statement("ALTER TABLE staff MODIFY COLUMN phone VARCHAR(255) NULL");
 
             if (! self::columnExists($db, 'staff', 'pf_number')) {
-                $db->statement("ALTER TABLE staff ADD COLUMN pf_number VARCHAR(255) NULL AFTER staff_number");
+                $db->statement("ALTER TABLE staff ADD COLUMN pf_number VARCHAR(255) NULL AFTER staff_id");
             }
             if (! self::columnExists($db, 'staff', 'other_name')) {
-                $db->statement("ALTER TABLE staff ADD COLUMN other_name VARCHAR(255) NULL AFTER middle_name");
+                $db->statement("ALTER TABLE staff ADD COLUMN other_name VARCHAR(255) NULL AFTER first_name");
             }
             if (! self::columnExists($db, 'staff', 'category')) {
                 $db->statement("ALTER TABLE staff ADD COLUMN category ENUM('JUNIOR','SENIOR') NOT NULL DEFAULT 'SENIOR' AFTER last_name");
@@ -203,6 +201,27 @@ class LegacySchemaManager
             }
             if (! self::columnExists($db, 'staff', 'signature')) {
                 $db->statement("ALTER TABLE staff ADD COLUMN signature VARCHAR(255) NULL AFTER passport");
+            }
+
+            // Sync and drop legacy columns: middle_name, staff_number, title
+            if (self::columnExists($db, 'staff', 'middle_name')) {
+                try {
+                    $db->statement("UPDATE staff SET other_name = middle_name WHERE (other_name IS NULL OR other_name = '') AND middle_name IS NOT NULL AND middle_name != ''");
+                    $db->statement("ALTER TABLE staff DROP COLUMN middle_name");
+                } catch (Throwable) {}
+            }
+            if (self::columnExists($db, 'staff', 'staff_number')) {
+                try {
+                    try {
+                        $db->statement("ALTER TABLE staff DROP INDEX staff_number");
+                    } catch (Throwable) {}
+                    $db->statement("ALTER TABLE staff DROP COLUMN staff_number");
+                } catch (Throwable) {}
+            }
+            if (self::columnExists($db, 'staff', 'title')) {
+                try {
+                    $db->statement("ALTER TABLE staff DROP COLUMN title");
+                } catch (Throwable) {}
             }
 
             try {

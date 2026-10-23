@@ -24,7 +24,7 @@ export function StaffPaymentsSections({ staff }) {
     const [isDownloading, setIsDownloading] = useState(false);
     const payslipRef = useRef(null);
 
-    const resolvedPf = staff?.staff_number || 'PF/5797';
+    const resolvedPf = staff?.pf_number || staff?.staffNumber || 'PF/5797';
 
     // 1. Fetch available uploaded payroll periods for this staff member
     useEffect(() => {
@@ -474,14 +474,14 @@ export function StaffPaymentsSections({ staff }) {
                                     </div>
                                     <span style={{ fontWeight: 'bold', width: '45px', marginLeft: '8px', flexShrink: 0 }}>Others</span>
                                     <div style={{ border: '1px solid #cbd5e1', padding: '0 0.45rem 6px 0.45rem', flex: 1, minWidth: 0, height: '24px', boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', fontWeight: '600', backgroundColor: '#fcfcfc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1 }}>
-                                        {staff?.first_name ? `${staff.first_name} ${staff.middle_name || ''}` : particulars.full_name?.split(' ')?.slice(1)?.join(' ') || 'UMAR'}
+                                        {staff?.first_name ? [staff.first_name, staff.other_name].filter(Boolean).join(' ') : particulars.full_name?.split(' ')?.slice(1)?.join(' ') || 'UMAR'}
                                     </div>
                                 </div>
 
                                 <div style={{ display: 'flex', alignItems: 'center', width: '100%', minWidth: 0 }}>
                                     <span style={{ fontWeight: 'bold', width: '52px', flexShrink: 0 }}>Emp No</span>
                                     <div className="print-compact-emp" style={{ border: '1px solid #cbd5e1', padding: '0 0.35rem 6px 0.35rem', width: '68px', height: '24px', boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', flexShrink: 0, fontWeight: 'bold', backgroundColor: '#fcfcfc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1 }}>
-                                        {staff?.staff_number || currentPayslip.pf_number || 'PF5797'}
+                                        {staff?.pf_number || staff?.staffNumber || currentPayslip.pf_number || 'PF5797'}
                                     </div>
                                     <span style={{ fontWeight: 'bold', width: '42px', marginLeft: '6px', flexShrink: 0 }}>Scale</span>
                                     <div className="print-compact-scale" style={{ border: '1px solid #cbd5e1', padding: '0 0.3rem 6px 0.3rem', width: '84px', height: '24px', boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: '#fcfcfc', textAlign: 'center', whiteSpace: 'nowrap', lineHeight: 1 }}>

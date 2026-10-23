@@ -356,30 +356,32 @@ DROP TABLE IF EXISTS `staff`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `staff` (
   `staff_id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `staff_number` varchar(50) NOT NULL,
-  `title` varchar(20) DEFAULT NULL,
+  `pf_number` varchar(50) DEFAULT NULL,
   `first_name` varchar(100) NOT NULL,
-  `middle_name` varchar(100) DEFAULT NULL,
+  `other_name` varchar(190) DEFAULT NULL,
   `last_name` varchar(100) NOT NULL,
+  `category` varchar(50) DEFAULT NULL,
   `gender` enum('Male','Female','Other') DEFAULT NULL,
   `date_of_birth` date DEFAULT NULL,
-  `rank_id` bigint(20) NOT NULL,
-  `department_id` bigint(20) NOT NULL,
+  `rank_id` bigint(20) DEFAULT NULL,
+  `rank` varchar(190) DEFAULT NULL,
+  `department_id` bigint(20) DEFAULT NULL,
+  `department` varchar(190) DEFAULT NULL,
   `email` varchar(150) NOT NULL,
   `phone` varchar(30) DEFAULT NULL,
   `office_location` varchar(150) DEFAULT NULL,
   `biography` text DEFAULT NULL,
   `profile_photo` varchar(255) DEFAULT NULL,
+  `passport` varchar(255) DEFAULT NULL,
+  `signature` varchar(255) DEFAULT NULL,
   `is_active` tinyint(1) DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`staff_id`),
-  UNIQUE KEY `staff_number` (`staff_number`),
+  UNIQUE KEY `pf_number` (`pf_number`),
   UNIQUE KEY `email` (`email`),
   KEY `rank_id` (`rank_id`),
-  KEY `department_id` (`department_id`),
-  CONSTRAINT `staff_ibfk_1` FOREIGN KEY (`rank_id`) REFERENCES `academic_rank` (`rank_id`),
-  CONSTRAINT `staff_ibfk_2` FOREIGN KEY (`department_id`) REFERENCES `department` (`department_id`)
+  KEY `department_id` (`department_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

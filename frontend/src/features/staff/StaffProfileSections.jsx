@@ -33,9 +33,8 @@ function ProfileSection({ staff, ranks, departments = [], onSubmit }) {
 
     useEffect(() => {
         setForm({
-            title: staff.title || '',
             first_name: staff.first_name || '',
-            middle_name: staff.middle_name || '',
+            other_name: staff.other_name || '',
             last_name: staff.last_name || '',
             gender: staff.gender || 'Male',
             date_of_birth: staff.date_of_birth || '',
@@ -93,7 +92,7 @@ function ProfileSection({ staff, ranks, departments = [], onSubmit }) {
                         />
                     </div>
                     {file && <span className="staff-form-note" style={{ display: 'block', textAlign: 'center', color: '#1b4d3e', fontWeight: 600, marginTop: 4 }}>Previewing selected photo</span>}
-                    <h3>{[form.title || staff.title, form.first_name || staff.first_name, form.last_name || staff.last_name].filter(Boolean).join(' ') || staff.full_name || 'Staff Profile'}</h3>
+                    <h3>{[form.first_name || staff.first_name, form.other_name || staff.other_name, form.last_name || staff.last_name].filter(Boolean).join(' ') || staff.full_name || 'Staff Profile'}</h3>
                     <p>{staff.rank_name || 'Not Set'}</p>
                     <div className="staff-profile-meta">
                         <div>
@@ -116,9 +115,8 @@ function ProfileSection({ staff, ranks, departments = [], onSubmit }) {
                             <p>Profile edits save immediately. Rank and department changes require admin approval.</p>
                         </div>
                         <div className="staff-form-grid is-profile">
-                            <Field label="Title"><select className="select" value={form.title || ''} onChange={(event) => updateField('title', event.target.value)}><option value="">Select title</option><option value="Mr.">Mr.</option><option value="Mrs.">Mrs.</option><option value="Ms.">Ms.</option><option value="Dr.">Dr.</option><option value="Prof.">Prof.</option><option value="Engr.">Engr.</option><option value="Arc.">Arc.</option><option value="Pharm.">Pharm.</option></select></Field>
                             <Field label="First Name"><input className="input" value={form.first_name || ''} onChange={(event) => updateField('first_name', event.target.value)} required /></Field>
-                            <Field label="Middle Name"><input className="input" value={form.middle_name || ''} onChange={(event) => updateField('middle_name', event.target.value)} /></Field>
+                            <Field label="Other Names"><input className="input" value={form.other_name || ''} onChange={(event) => updateField('other_name', event.target.value)} placeholder="Optional" /></Field>
                             <Field label="Last Name"><input className="input" value={form.last_name || ''} onChange={(event) => updateField('last_name', event.target.value)} required /></Field>
                             <Field label="Gender">
                                 <select className="select" value={form.gender || ''} onChange={(event) => updateField('gender', event.target.value)}>

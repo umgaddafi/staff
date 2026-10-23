@@ -38,8 +38,8 @@ class LegacyPortfolioService
             ->leftJoin('college as c', 'd.college_id', '=', 'c.college_id')
             ->selectRaw(
                 'ua.user_id, ua.staff_id, ua.username, ua.role, ua.is_active, ua.must_change_password,
-                s.title, s.first_name, s.middle_name, s.other_name, s.last_name, s.email, s.phone,
-                s.profile_photo, s.passport, s.signature, s.staff_number, s.pf_number, s.category,
+                s.first_name, s.other_name, s.last_name, s.email, s.phone,
+                s.profile_photo, s.passport, s.signature, s.pf_number, s.category,
                 COALESCE(r.name, s.rank) as rank_name, COALESCE(d.name, s.department) as department_name, c.name as college_name'
             )
             ->where('ua.user_id', $userId)
@@ -69,16 +69,14 @@ class LegacyPortfolioService
             ->where('ua.is_active', 1)
             ->where(function ($sub) use ($cleanIdentifier, $alphanumericIdentifier): void {
                 $sub->where('ua.username', $cleanIdentifier)
-                    ->orWhere('s.staff_number', $cleanIdentifier)
                     ->orWhere('s.pf_number', $cleanIdentifier)
                     ->orWhereRaw('LOWER(s.email) = ?', [strtolower($cleanIdentifier)]);
 
                 if ($alphanumericIdentifier !== '') {
-                    $sub->orWhereRaw("REPLACE(REPLACE(s.staff_number, '/', ''), '-', '') = ?", [$alphanumericIdentifier])
-                        ->orWhereRaw("REPLACE(REPLACE(s.pf_number, '/', ''), '-', '') = ?", [$alphanumericIdentifier]);
+                    $sub->orWhereRaw("REPLACE(REPLACE(s.pf_number, '/', ''), '-', '') = ?", [$alphanumericIdentifier]);
                 }
             })
-            ->select('ua.*', 's.phone as staff_phone', 's.pf_number as staff_pf_number', 's.staff_number as staff_staff_number');
+            ->select('ua.*', 's.phone as staff_phone', 's.pf_number as staff_pf_number');
 
         $account = $query->first();
 
@@ -102,13 +100,11 @@ class LegacyPortfolioService
         $staffQuery = DB::table('staff as s')
             ->where('s.is_active', 1)
             ->where(function ($sub) use ($cleanIdentifier, $alphanumericIdentifier): void {
-                $sub->where('s.staff_number', $cleanIdentifier)
-                    ->orWhere('s.pf_number', $cleanIdentifier)
+                $sub->where('s.pf_number', $cleanIdentifier)
                     ->orWhereRaw('LOWER(s.email) = ?', [strtolower($cleanIdentifier)]);
 
                 if ($alphanumericIdentifier !== '') {
-                    $sub->orWhereRaw("REPLACE(REPLACE(s.staff_number, '/', ''), '-', '') = ?", [$alphanumericIdentifier])
-                        ->orWhereRaw("REPLACE(REPLACE(s.pf_number, '/', ''), '-', '') = ?", [$alphanumericIdentifier]);
+                    $sub->orWhereRaw("REPLACE(REPLACE(s.pf_number, '/', ''), '-', '') = ?", [$alphanumericIdentifier]);
                 }
             });
 
@@ -117,13 +113,12 @@ class LegacyPortfolioService
         if ($staff) {
             $mockAccount = (object) [
                 'staff_phone' => $staff->phone,
-                'staff_pf_number' => $staff->pf_number ?? $staff->staff_number,
-                'staff_staff_number' => $staff->staff_number ?? $staff->pf_number,
+                'staff_pf_number' => $staff->pf_number,
                 'password' => '',
             ];
 
             if ($this->verifyFirstTimeAlternativePassword($mockAccount, $cleanIdentifier, $cleanPassword)) {
-                $baseUsername = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', (string) ($staff->pf_number ?? $staff->staff_number)));
+                $baseUsername = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', (string) ($staff->pf_number ?? '')));
                 if ($baseUsername === '') {
                     $baseUsername = strtolower(trim($staff->first_name . '.' . $staff->last_name));
                 }
@@ -205,12 +200,10 @@ class LegacyPortfolioService
 
         // 2. Password matches staff PF number
         $pf1 = strtoupper(trim((string) ($account->staff_pf_number ?? '')));
-        $pf2 = strtoupper(trim((string) ($account->staff_staff_number ?? '')));
         $cleanPassword = strtoupper(preg_replace('/[^A-Z0-9]/', '', $password));
         $cleanPf1 = preg_replace('/[^A-Z0-9]/', '', $pf1);
-        $cleanPf2 = preg_replace('/[^A-Z0-9]/', '', $pf2);
 
-        if ($cleanPassword !== '' && ($cleanPassword === $cleanPf1 || $cleanPassword === $cleanPf2)) {
+        if ($cleanPassword !== '' && $cleanPassword === $cleanPf1) {
             return true;
         }
 
@@ -309,7 +302,7 @@ class LegacyPortfolioService
             ->leftJoin('department as d', 's.department_id', '=', 'd.department_id')
             ->leftJoin('college as c', 'd.college_id', '=', 'c.college_id')
             ->selectRaw(
-                "s.staff_id, COALESCE(s.pf_number, s.staff_number, '') as pf_number, CONCAT(COALESCE(s.title, ''), ' ', s.first_name, ' ', s.last_name) as name,
+                "s.staff_id, COALESCE(s.pf_number, '') as pf_number, CONCAT(s.first_name, ' ', s.last_name) as name,
                 COALESCE(r.name, s.rank, 'Staff Member') as role, COALESCE(sc.name, s.category, 'Uncategorized') as category, COALESCE(r.id, 9999) as rank_level_value,
                 COALESCE(d.name, s.department, 'General') as department, COALESCE(c.name, 'University') as faculty, IFNULL(COALESCE(s.profile_photo, s.passport), '') as profile_photo"
             )
@@ -324,8 +317,8 @@ class LegacyPortfolioService
                 $subQuery
                     ->where('s.first_name', 'like', '%' . $search . '%')
                     ->orWhere('s.last_name', 'like', '%' . $search . '%')
+                    ->orWhere('s.other_name', 'like', '%' . $search . '%')
                     ->orWhere('s.email', 'like', '%' . $search . '%')
-                    ->orWhere('s.staff_number', 'like', '%' . $search . '%')
                     ->orWhere('s.pf_number', 'like', '%' . $search . '%')
                     ->orWhere('s.phone', 'like', '%' . $search . '%')
                     ->orWhere('s.department', 'like', '%' . $search . '%')
@@ -344,10 +337,10 @@ class LegacyPortfolioService
         $items = $query
             ->orderByRaw("
                 CASE 
-                    WHEN UPPER(REPLACE(REPLACE(COALESCE(s.pf_number, s.staff_number, ''), '/', ''), ',', '')) = 'PF0583' THEN 1
-                    WHEN UPPER(REPLACE(REPLACE(COALESCE(s.pf_number, s.staff_number, ''), '/', ''), ',', '')) = 'PF1229' THEN 2
-                    WHEN UPPER(REPLACE(REPLACE(COALESCE(s.pf_number, s.staff_number, ''), '/', ''), ',', '')) = 'PF2365' THEN 3
-                    WHEN UPPER(REPLACE(REPLACE(COALESCE(s.pf_number, s.staff_number, ''), '/', ''), ',', '')) = 'PF1466' THEN 4
+                    WHEN UPPER(REPLACE(REPLACE(COALESCE(s.pf_number, ''), '/', ''), ',', '')) = 'PF0583' THEN 1
+                    WHEN UPPER(REPLACE(REPLACE(COALESCE(s.pf_number, ''), '/', ''), ',', '')) = 'PF1229' THEN 2
+                    WHEN UPPER(REPLACE(REPLACE(COALESCE(s.pf_number, ''), '/', ''), ',', '')) = 'PF2365' THEN 3
+                    WHEN UPPER(REPLACE(REPLACE(COALESCE(s.pf_number, ''), '/', ''), ',', '')) = 'PF1466' THEN 4
                     ELSE 5
                 END
             ")
@@ -590,9 +583,8 @@ class LegacyPortfolioService
         }
 
         $directFields = [
-            'title' => trim((string) ($data['title'] ?? '')),
             'first_name' => trim((string) ($data['first_name'] ?? '')),
-            'middle_name' => trim((string) ($data['middle_name'] ?? '')),
+            'other_name' => trim((string) ($data['other_name'] ?? '')),
             'last_name' => trim((string) ($data['last_name'] ?? '')),
             'gender' => trim((string) ($data['gender'] ?? '')),
             'date_of_birth' => ! empty($data['date_of_birth']) ? (string) $data['date_of_birth'] : null,
@@ -1020,29 +1012,29 @@ class LegacyPortfolioService
         $firstName = trim((string) ($data['first_name'] ?? ''));
         $lastName = trim((string) ($data['last_name'] ?? ''));
         $email = trim((string) ($data['email'] ?? ''));
-        $staffNumber = trim((string) ($data['staff_number'] ?? ''));
+        $pfNumber = trim((string) ($data['pf_number'] ?? $data['staff_number'] ?? ''));
         $departmentId = (int) ($data['department_id'] ?? 0);
         $rankId = (int) ($data['rank_id'] ?? 0);
 
-        if ($firstName === '' || $lastName === '' || $email === '' || $staffNumber === '' || $departmentId <= 0 || $rankId <= 0) {
+        if ($firstName === '' || $lastName === '' || $email === '' || $pfNumber === '' || $departmentId <= 0 || $rankId <= 0) {
             throw new RuntimeException('Please complete all required staff fields.');
         }
 
         $duplicate = DB::table('staff')
             ->where('email', $email)
-            ->orWhere('staff_number', $staffNumber)
+            ->orWhere('pf_number', $pfNumber)
             ->exists();
 
         if ($duplicate) {
-            throw new RuntimeException('A staff member with this email or staff number already exists.');
+            throw new RuntimeException('A staff member with this email or PF number already exists.');
         }
 
         $username = $this->generateUniqueUsername($firstName, $lastName);
         $temporaryPassword = $this->generateTemporaryPassword();
 
-        DB::transaction(function () use ($staffNumber, $firstName, $lastName, $email, $departmentId, $rankId, $username, $temporaryPassword): void {
+        DB::transaction(function () use ($pfNumber, $firstName, $lastName, $email, $departmentId, $rankId, $username, $temporaryPassword): void {
             $staffId = (int) DB::table('staff')->insertGetId([
-                'staff_number' => $staffNumber,
+                'pf_number' => $pfNumber,
                 'first_name' => $firstName,
                 'last_name' => $lastName,
                 'email' => $email,
@@ -1092,7 +1084,7 @@ class LegacyPortfolioService
         $otherName = array_key_exists('other_name', $data) ? trim((string) $data['other_name']) : $staff->other_name;
         $pfNumber = array_key_exists('pf_number', $data) && trim((string) $data['pf_number']) !== ''
             ? trim((string) $data['pf_number'])
-            : (trim((string) ($data['staff_number'] ?? '')) !== '' ? trim((string) $data['staff_number']) : ($staff->pf_number ?? $staff->staff_number));
+            : (trim((string) ($data['staff_number'] ?? '')) !== '' ? trim((string) $data['staff_number']) : ($staff->pf_number ?? ''));
         $email = array_key_exists('email', $data) ? trim((string) $data['email']) : $staff->email;
         $phone = array_key_exists('phone', $data) ? trim((string) $data['phone']) : $staff->phone;
 
@@ -1109,9 +1101,7 @@ class LegacyPortfolioService
             'first_name' => $firstName,
             'last_name' => $lastName,
             'other_name' => $otherName !== '' ? $otherName : null,
-            'middle_name' => $otherName !== '' ? $otherName : null,
             'pf_number' => $pfNumber,
-            'staff_number' => $pfNumber,
             'category' => $category,
             'email' => $email !== '' ? $email : null,
             'phone' => $phone !== '' ? $phone : null,
@@ -1474,7 +1464,7 @@ class LegacyPortfolioService
     public function requestHistory(int $staffId): array
     {
         $staff = DB::table('staff')
-            ->select('staff_id', 'first_name', 'last_name', 'staff_number')
+            ->select('staff_id', 'first_name', 'last_name', 'pf_number')
             ->where('staff_id', $staffId)
             ->first();
 
@@ -1500,7 +1490,8 @@ class LegacyPortfolioService
             'staff' => [
                 'staffId' => (int) $staff->staff_id,
                 'name' => trim($staff->first_name . ' ' . $staff->last_name),
-                'staffNumber' => (string) $staff->staff_number,
+                'staffNumber' => (string) ($staff->pf_number ?? ''),
+                'pfNumber' => (string) ($staff->pf_number ?? ''),
             ],
             'logs' => $logs,
         ];
@@ -1512,7 +1503,7 @@ class LegacyPortfolioService
             ->leftJoin('user_account as ua', 'cl.user_id', '=', 'ua.user_id')
             ->leftJoin('staff as s', 'ua.staff_id', '=', 's.staff_id')
             ->where('cl.log_id', $logId)
-            ->select('cl.*', 'ua.username', 's.staff_id', 's.first_name', 's.last_name', 's.staff_number', 's.profile_photo')
+            ->select('cl.*', 'ua.username', 's.staff_id', 's.first_name', 's.last_name', 's.pf_number', 's.profile_photo')
             ->first();
 
         if (! $log) {
@@ -1628,7 +1619,6 @@ class LegacyPortfolioService
             ->leftJoin('user_account as ua', 's.staff_id', '=', 'ua.staff_id')
             ->select(
                 's.staff_id',
-                's.staff_number',
                 's.pf_number',
                 's.first_name',
                 's.last_name',
@@ -1665,7 +1655,6 @@ class LegacyPortfolioService
                     ->orWhere('s.other_name', 'like', '%' . $search . '%')
                     ->orWhere('s.email', 'like', '%' . $search . '%')
                     ->orWhere('s.pf_number', 'like', '%' . $search . '%')
-                    ->orWhere('s.staff_number', 'like', '%' . $search . '%')
                     ->orWhere('s.phone', 'like', '%' . $search . '%');
             });
         }
@@ -1758,12 +1747,12 @@ class LegacyPortfolioService
             ->join('user_account as ua', 'cl.user_id', '=', 'ua.user_id')
             ->join('staff as s', 'ua.staff_id', '=', 's.staff_id')
             ->selectRaw(
-                's.staff_id, s.first_name, s.last_name, s.staff_number,
+                's.staff_id, s.first_name, s.last_name, s.pf_number,
                 COUNT(cl.log_id) as total_requests,
                 SUM(CASE WHEN cl.status = "Pending" THEN 1 ELSE 0 END) as pending_requests,
                 MAX(cl.timestamp) as last_request_at'
             )
-            ->groupBy('s.staff_id', 's.first_name', 's.last_name', 's.staff_number')
+            ->groupBy('s.staff_id', 's.first_name', 's.last_name', 's.pf_number')
             ->orderByDesc('last_request_at');
 
         if ($search !== '') {
@@ -1771,14 +1760,15 @@ class LegacyPortfolioService
                 $subQuery
                     ->where('s.first_name', 'like', '%' . $search . '%')
                     ->orWhere('s.last_name', 'like', '%' . $search . '%')
-                    ->orWhere('s.staff_number', 'like', '%' . $search . '%');
+                    ->orWhere('s.pf_number', 'like', '%' . $search . '%');
             });
         }
 
         return $query->get()->map(fn ($row) => [
             'staffId' => (int) $row->staff_id,
             'name' => trim($row->first_name . ' ' . $row->last_name),
-            'staffNumber' => (string) $row->staff_number,
+            'staffNumber' => (string) ($row->pf_number ?? ''),
+            'pfNumber' => (string) ($row->pf_number ?? ''),
             'totalRequests' => (int) $row->total_requests,
             'pendingRequests' => (int) $row->pending_requests,
             'lastRequestAt' => (string) $row->last_request_at,
@@ -1852,8 +1842,11 @@ class LegacyPortfolioService
 
     private function normalizeStaffProfile(array $staff): array
     {
-        $staff['profile_photo_url'] = $this->fileUrl('uploads/' . ltrim((string) ($staff['profile_photo'] ?? ''), '/'));
-        $staff['full_name'] = trim(((string) ($staff['title'] ?? '')) . ' ' . ((string) ($staff['first_name'] ?? '')) . ' ' . ((string) ($staff['last_name'] ?? '')));
+        $staff['full_name'] = trim(implode(' ', array_filter([
+            (string) ($staff['first_name'] ?? ''),
+            (string) ($staff['other_name'] ?? ''),
+            (string) ($staff['last_name'] ?? ''),
+        ])));
 
         return $staff;
     }
@@ -2397,8 +2390,8 @@ class LegacyPortfolioService
 
     private function mapUserSummary(array $row): array
     {
-        $middle = trim((string) ($row['middle_name'] ?? $row['other_name'] ?? ''));
-        $fullName = trim(((string) ($row['title'] ?? '')) . ' ' . ((string) ($row['first_name'] ?? '')) . ' ' . ($middle !== '' ? $middle . ' ' : '') . ((string) ($row['last_name'] ?? '')));
+        $middle = trim((string) ($row['other_name'] ?? ''));
+        $fullName = trim(((string) ($row['first_name'] ?? '')) . ' ' . ($middle !== '' ? $middle . ' ' : '') . ((string) ($row['last_name'] ?? '')));
         $photo = !empty($row['profile_photo']) ? $row['profile_photo'] : ($row['passport'] ?? '');
 
         return [
@@ -2411,8 +2404,8 @@ class LegacyPortfolioService
             'name' => $fullName !== '' ? $fullName : (string) ($row['username'] ?? 'User'),
             'email' => (string) ($row['email'] ?? ''),
             'phone' => (string) ($row['phone'] ?? ''),
-            'staffNumber' => (string) ($row['staff_number'] ?? $row['pf_number'] ?? ''),
-            'pfNumber' => (string) ($row['pf_number'] ?? $row['staff_number'] ?? ''),
+            'staffNumber' => (string) ($row['pf_number'] ?? ''),
+            'pfNumber' => (string) ($row['pf_number'] ?? ''),
             'category' => (string) ($row['category'] ?? ''),
             'departmentName' => (string) ($row['department_name'] ?? ''),
             'collegeName' => (string) ($row['college_name'] ?? ''),
@@ -2430,8 +2423,8 @@ class LegacyPortfolioService
 
         return [
             'staffId' => (int) $row->staff_id,
-            'staffNumber' => (string) ($row->staff_number ?? $row->pf_number ?? ''),
-            'pfNumber' => (string) ($row->pf_number ?? $row->staff_number ?? ''),
+            'staffNumber' => (string) ($row->pf_number ?? ''),
+            'pfNumber' => (string) ($row->pf_number ?? ''),
             'name' => trim(((string) $row->first_name) . ' ' . (!empty($row->other_name) ? trim((string) $row->other_name) . ' ' : '') . ((string) $row->last_name)),
             'firstName' => (string) $row->first_name,
             'lastName' => (string) $row->last_name,
@@ -2464,7 +2457,6 @@ class LegacyPortfolioService
             ->leftJoin('user_account as ua', 's.staff_id', '=', 'ua.staff_id')
             ->select(
                 's.staff_id',
-                's.staff_number',
                 's.pf_number',
                 's.first_name',
                 's.last_name',
@@ -3016,7 +3008,7 @@ class LegacyPortfolioService
                     }
 
                     $existing = DB::table("{$auditDb}.staff")
-                        ->where('pf_number', $rs->staff_number)
+                        ->where('pf_number', $rs->pf_number)
                         ->orWhere('email', $rs->email)
                         ->first();
 
@@ -3024,10 +3016,10 @@ class LegacyPortfolioService
                         DB::table("{$auditDb}.staff")
                             ->where('id', $existing->id)
                             ->update([
-                                'pf_number' => $rs->staff_number,
+                                'pf_number' => $rs->pf_number,
                                 'surname' => $rs->last_name ?: 'Staff',
                                 'first_name' => $rs->first_name ?: 'Staff',
-                                'other_name' => trim(($rs->title ? $rs->title . ' ' : '') . ($rs->middle_name ?: '')),
+                                'other_name' => $rs->other_name ?: '',
                                 'phone' => $rs->phone,
                                 'email' => $rs->email,
                                 'department_id' => $deptId,
@@ -3037,10 +3029,10 @@ class LegacyPortfolioService
                     } else {
                         DB::table("{$auditDb}.staff")->insert([
                             'user_id' => null,
-                            'pf_number' => $rs->staff_number,
+                            'pf_number' => $rs->pf_number,
                             'surname' => $rs->last_name ?: 'Staff',
                             'first_name' => $rs->first_name ?: 'Staff',
-                            'other_name' => trim(($rs->title ? $rs->title . ' ' : '') . ($rs->middle_name ?: '')),
+                            'other_name' => $rs->other_name ?: '',
                             'phone' => $rs->phone,
                             'email' => $rs->email,
                             'department_id' => $deptId,
@@ -3118,7 +3110,7 @@ class LegacyPortfolioService
                 })->values();
 
                 $mainStaff = DB::table('staff')
-                    ->where('staff_number', $sub->pf_number)
+                    ->where('pf_number', $sub->pf_number)
                     ->orWhere('email', $sub->email)
                     ->first();
 
@@ -3142,7 +3134,7 @@ class LegacyPortfolioService
 
                 $fullName = trim("{$sub->first_name} {$sub->other_name} {$sub->surname}");
                 if ($mainStaff) {
-                    $fullName = trim(($mainStaff->title ? $mainStaff->title . ' ' : '') . $mainStaff->first_name . ' ' . ($mainStaff->middle_name ? $mainStaff->middle_name . ' ' : '') . $mainStaff->last_name);
+                    $fullName = trim($mainStaff->first_name . ' ' . ($mainStaff->other_name ? $mainStaff->other_name . ' ' : '') . $mainStaff->last_name);
                 }
 
                 return [
@@ -3195,9 +3187,9 @@ class LegacyPortfolioService
 
             $recentScreenedStaff = $recentScreened->map(function ($rs) {
                 $name = trim("{$rs->first_name} {$rs->other_name} {$rs->surname}");
-                $ms = DB::table('staff')->where('staff_number', $rs->pf_number)->first();
+                $ms = DB::table('staff')->where('pf_number', $rs->pf_number)->first();
                 if ($ms) {
-                    $name = trim(($ms->title ? $ms->title . ' ' : '') . $ms->first_name . ' ' . ($ms->middle_name ? $ms->middle_name . ' ' : '') . $ms->last_name);
+                    $name = trim($ms->first_name . ' ' . ($ms->other_name ? $ms->other_name . ' ' : '') . $ms->last_name);
                 }
                 return [
                     'staff_name' => $name,
@@ -3526,9 +3518,10 @@ class LegacyPortfolioService
 
         return [
             'staff_id' => (int) $staff->staff_id,
-            'staff_number' => (string) ($staff->staff_number ?? ''),
+            'staff_number' => (string) ($staff->pf_number ?? ''),
+            'pf_number' => (string) ($staff->pf_number ?? ''),
             'file_no' => (string) ($staff->file_no ?? ''),
-            'full_name' => trim(($staff->title ?? '') . ' ' . ($staff->first_name ?? '') . ' ' . ($staff->middle_name ?? '') . ' ' . ($staff->last_name ?? '')),
+            'full_name' => trim(($staff->first_name ?? '') . ' ' . ($staff->other_name ? $staff->other_name . ' ' : '') . ($staff->last_name ?? '')),
             'email' => (string) ($staff->email ?? ''),
             'phone' => (string) ($staff->phone ?? ''),
             'department' => (string) ($staff->department_name ?? $staff->department ?? ''),

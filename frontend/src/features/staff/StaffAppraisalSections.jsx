@@ -21,7 +21,7 @@ function AppraisalDashboard() {
                     const s = overviewRes?.data?.staff || overviewRes?.staff;
                     if (s) {
                         setStaffInfo(s);
-                        currentPF = s.pf_number || s.staff_number || '';
+                        currentPF = s.pf_number || s.staffNumber || s.staff_number || '';
                     }
                 } catch (e) {}
 

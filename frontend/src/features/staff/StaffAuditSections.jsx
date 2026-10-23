@@ -76,7 +76,7 @@ export function StaffAuditSections({ staff: currentStaff }) {
   const [authChecking, setAuthChecking] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const currentPf = currentStaff?.staff_number || currentStaff?.pf_number;
+  const currentPf = currentStaff?.pf_number || currentStaff?.staffNumber || currentStaff?.staff_number;
 
   const load = async (isManual = false) => {
     if (isManual) setRefreshing(true);
@@ -97,7 +97,7 @@ export function StaffAuditSections({ staff: currentStaff }) {
   useEffect(() => {
     let isMounted = true;
     const authenticate = async () => {
-      const pf = currentStaff?.staff_number || currentStaff?.pf_number;
+      const pf = currentStaff?.pf_number || currentStaff?.staffNumber || currentStaff?.staff_number;
       if (!pf) {
         setAuthChecking(false);
         return;
@@ -144,7 +144,7 @@ export function StaffAuditSections({ staff: currentStaff }) {
     return () => {
       isMounted = false;
     };
-  }, [currentStaff?.staff_number, currentStaff?.pf_number, currentStaff?.phone]);
+  }, [currentStaff?.pf_number, currentStaff?.staffNumber, currentStaff?.phone]);
 
   useEffect(() => {
     if (!message) return undefined;
@@ -155,7 +155,7 @@ export function StaffAuditSections({ staff: currentStaff }) {
   useEffect(() => {
     if (!viewingDocument) return undefined;
     setLoadingDocumentId(viewingDocument.id);
-    const pf = currentStaff?.staff_number || currentStaff?.pf_number;
+    const pf = currentStaff?.pf_number || currentStaff?.staffNumber || currentStaff?.staff_number;
     api.get(`/staff/documents/${viewingDocument.id}`, {
       responseType: 'blob',
       headers: pf ? { 'X-Staff-PF': pf } : {},
@@ -210,12 +210,13 @@ export function StaffAuditSections({ staff: currentStaff }) {
   const staffPassportUrl = resolvePassportUrl();
   
   const displayName = currentStaff?.full_name 
-    || [currentStaff?.title, currentStaff?.first_name, currentStaff?.middle_name, currentStaff?.last_name].filter(Boolean).join(' ') 
+    || [currentStaff?.first_name, currentStaff?.other_name, currentStaff?.last_name].filter(Boolean).join(' ') 
     || `${currentStaff?.first_name || ''} ${currentStaff?.last_name || ''}`.trim() 
     || staff.full_name;
 
-  const displayPfNumber = currentStaff?.staff_number 
-    || currentStaff?.pf_number 
+  const displayPfNumber = currentStaff?.pf_number 
+    || currentStaff?.staffNumber 
+    || currentStaff?.staff_number 
     || staff.pf_number;
 
   const displayDepartment = currentStaff?.department_name 
@@ -266,7 +267,7 @@ export function StaffAuditSections({ staff: currentStaff }) {
       event.target.value = '';
       return;
     }
-    const pf = currentStaff?.staff_number || currentStaff?.pf_number;
+    const pf = currentStaff?.pf_number || currentStaff?.staffNumber || currentStaff?.staff_number;
     const body = new FormData();
     body.append('document_type_id', type.id);
     body.append('file', file);
@@ -297,7 +298,7 @@ export function StaffAuditSections({ staff: currentStaff }) {
     if (submitting) return;
     setSubmitting(true);
     setError('');
-    const pf = currentStaff?.staff_number || currentStaff?.pf_number;
+    const pf = currentStaff?.pf_number || currentStaff?.staffNumber || currentStaff?.staff_number;
     try {
       await api.post('/staff/submit', pf ? { pf_number: pf } : {}, {
         headers: pf ? { 'X-Staff-PF': pf } : {},
@@ -645,12 +646,13 @@ function ConfirmSubmitModal({ submitting, onCancel, onConfirm }) {
 
 function ProfileForm({ staff, currentStaff, onSaved }) {
   const displayName = currentStaff?.full_name 
-    || [currentStaff?.title, currentStaff?.first_name, currentStaff?.middle_name, currentStaff?.last_name].filter(Boolean).join(' ') 
+    || [currentStaff?.first_name, currentStaff?.other_name, currentStaff?.last_name].filter(Boolean).join(' ') 
     || `${currentStaff?.first_name || ''} ${currentStaff?.last_name || ''}`.trim() 
     || staff.full_name;
 
-  const displayPfNumber = currentStaff?.staff_number 
-    || currentStaff?.pf_number 
+  const displayPfNumber = currentStaff?.pf_number 
+    || currentStaff?.staffNumber 
+    || currentStaff?.staff_number 
     || staff.pf_number;
 
   const displayDepartment = currentStaff?.department_name 

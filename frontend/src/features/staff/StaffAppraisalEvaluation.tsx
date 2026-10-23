@@ -105,8 +105,8 @@ export default function EvaluationForm({ overrideRole, selectedStaffId }: { over
             // Ignore
           }
         }
-        const resolvedName = staffObj?.full_name || [staffObj?.title, staffObj?.first_name, staffObj?.middle_name, staffObj?.last_name].filter(Boolean).join(' ') || userObj?.name || "Gaddafi Umar";
-        const resolvedPF = staffObj?.pf_number || staffObj?.staff_number || staffObj?.file_number || userObj?.staffId || "PF/5797";
+        const resolvedName = staffObj?.full_name || [staffObj?.first_name, staffObj?.other_name, staffObj?.last_name].filter(Boolean).join(' ') || userObj?.name || "Gaddafi Umar";
+        const resolvedPF = staffObj?.pf_number || staffObj?.staffNumber || staffObj?.file_number || userObj?.staffId || "PF/5797";
 
         setFormData(prev => ({
           ...prev,
@@ -156,7 +156,7 @@ export default function EvaluationForm({ overrideRole, selectedStaffId }: { over
             try {
               const overviewRes = await api.get('/staff/overview');
               const s = overviewRes?.data?.staff || overviewRes?.staff;
-              if (s) myPF = s.pf_number || s.staff_number;
+              if (s) myPF = s.pf_number || s.staffNumber || s.staff_number;
             } catch (e) {}
           }
           if (myPF) {

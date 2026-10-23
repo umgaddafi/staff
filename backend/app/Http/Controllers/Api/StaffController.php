@@ -20,9 +20,8 @@ class StaffController extends Controller
     public function updateProfile(Request $request, LegacyPortfolioService $service): JsonResponse
     {
         $payload = $request->validate([
-            'title' => ['nullable', 'string', 'max:20'],
             'first_name' => ['required', 'string', 'max:100'],
-            'middle_name' => ['nullable', 'string', 'max:100'],
+            'other_name' => ['nullable', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
             'gender' => ['nullable', 'in:Male,Female,Other'],
             'date_of_birth' => ['nullable', 'date'],

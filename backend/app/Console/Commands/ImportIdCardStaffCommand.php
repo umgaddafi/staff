@@ -158,7 +158,6 @@ class ImportIdCardStaffCommand extends Command
             // Check if staff already exists in university_portfolio.staff
             $existing = DB::table('staff')
                 ->where('pf_number', $pfNumber)
-                ->orWhere('staff_number', $pfNumber)
                 ->first();
 
             $staffId = null;
@@ -166,11 +165,9 @@ class ImportIdCardStaffCommand extends Command
             if ($existing) {
                 $updateData = [
                     'pf_number' => $pfNumber,
-                    'staff_number' => $pfNumber,
                     'first_name' => $firstName !== '' ? $firstName : $existing->first_name,
                     'last_name' => $lastName !== '' ? $lastName : $existing->last_name,
                     'other_name' => $otherName ?? $existing->other_name,
-                    'middle_name' => $existing->middle_name ?? $otherName,
                     'category' => $category,
                     'email' => $existing->email ?? $email,
                     'phone' => $existing->phone ?? $phone,
@@ -190,11 +187,9 @@ class ImportIdCardStaffCommand extends Command
             } else {
                 $insertData = [
                     'pf_number' => $pfNumber,
-                    'staff_number' => $pfNumber,
                     'first_name' => $firstName,
                     'last_name' => $lastName,
                     'other_name' => $otherName,
-                    'middle_name' => $otherName,
                     'category' => $category,
                     'email' => $email,
                     'phone' => $phone,

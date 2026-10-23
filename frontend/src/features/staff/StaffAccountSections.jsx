@@ -60,8 +60,8 @@ function SettingsSection({ staff, user, notifications, onChangePassword, onMarkA
                             <strong>{user?.role || 'Staff'}</strong>
                         </div>
                         <div>
-                            <span>Staff Number</span>
-                            <strong>{staff?.staff_number || 'Not assigned'}</strong>
+                            <span>PF Number</span>
+                            <strong>{staff?.pf_number || staff?.staffNumber || staff?.staff_number || 'Not assigned'}</strong>
                         </div>
                         <div>
                             <span>Official Email</span>
@@ -169,13 +169,15 @@ function IdCardSection({ staff, idCard, onRequestCard }) {
         signatureProcessed: ''
     });
 
+    const staffPf = staff?.pf_number || staff?.staffNumber || staff?.staff_number;
+
     useEffect(() => {
-        if (!staff?.staff_number) {
+        if (!staffPf) {
             setLoading(false);
             return;
         }
         
-        let pfNumber = staff.staff_number;
+        let pfNumber = staffPf;
         // The API route requires pfNumber, but it might contain a slash which might not be safely encoded in some routers.
         
         fetch(`${JOSTUM_API}/v1/staff/${pfNumber}`)
@@ -200,7 +202,7 @@ function IdCardSection({ staff, idCard, onRequestCard }) {
                 setError(err.message || 'Failed to fetch staff data');
                 setLoading(false);
             });
-    }, [staff?.staff_number]);
+    }, [staffPf]);
 
     if (loading) {
         return <div className="staff-loading">Loading ID Card details...</div>;

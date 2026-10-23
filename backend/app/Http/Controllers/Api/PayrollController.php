@@ -168,11 +168,11 @@ class PayrollController extends Controller
             ], 422);
         }
 
-        // Cache all staff from DB for quick lookup by normalized staff_number
+        // Cache all staff from DB for quick lookup by normalized pf_number
         $allStaff = DB::table('staff')->get();
         $staffMap = [];
         foreach ($allStaff as $st) {
-            $norm = $this->cleanPf($st->staff_number);
+            $norm = $this->cleanPf($st->pf_number ?? '');
             $staffMap[$norm] = $st;
         }
 
@@ -545,8 +545,8 @@ class PayrollController extends Controller
         $staffId = (int) $request->session()->get('legacy_auth.staffId', 0);
         if ($staffId > 0) {
             $staff = DB::table('staff')->where('staff_id', $staffId)->first();
-            if ($staff && !empty($staff->staff_number)) {
-                return $staff->staff_number;
+            if ($staff && !empty($staff->pf_number)) {
+                return $staff->pf_number;
             }
         }
 
@@ -556,13 +556,13 @@ class PayrollController extends Controller
             $user = DB::table('users')->where('id', $userId)->first();
             if ($user) {
                 $staff = DB::table('staff')->where('email', $user->email)->first();
-                if ($staff && !empty($staff->staff_number)) {
-                    return $staff->staff_number;
+                if ($staff && !empty($staff->pf_number)) {
+                    return $staff->pf_number;
                 }
             }
         }
 
-        return 'PF/5797'; // Default production staff number
+        return 'PF/5797'; // Default production PF number
     }
 
     /**

@@ -3,8 +3,7 @@ import { StaffDashboardActionIcon, StaffDashboardStatIcon } from '../../componen
 
 function StaffDashboard({ data, onDownloadCv }) {
     const staff = data.profile.staff || {};
-    const nameCore = staff.first_name || staff.last_name || data.user.name || 'Staff';
-    const staffDisplayName = [staff.title, nameCore].filter(Boolean).join(' ') || data.user.name || 'Staff';
+    const staffDisplayName = [staff.first_name, staff.other_name, staff.last_name].filter(Boolean).join(' ') || data.user.name || 'Staff';
     const statsMeta = {
         publications: { to: '/staff/publications', icon: 'publications', color: '#1f6fff', background: 'rgba(31, 111, 255, 0.10)' },
         supervisions: { to: '/staff/supervision', icon: 'supervisions', color: '#198754', background: 'rgba(25, 135, 84, 0.10)' },

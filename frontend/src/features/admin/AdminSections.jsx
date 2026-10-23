@@ -95,7 +95,7 @@ function AdminStaffSection({ staff, onCreate, onUpdate, onDelete }) {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [editingStaffId, setEditingStaffId] = useState(null);
     const [viewingStaffDocs, setViewingStaffDocs] = useState(null);
-    const [form, setForm] = useState({ first_name: '', last_name: '', email: '', staff_number: '', department_id: '', rank_id: '', staff_category_id: '', passport_url: '' });
+    const [form, setForm] = useState({ first_name: '', last_name: '', email: '', pf_number: '', department_id: '', rank_id: '', staff_category_id: '', passport_url: '' });
     const [isSearchingStaff, setIsSearchingStaff] = useState(false);
     const [searchSuccessful, setSearchSuccessful] = useState(false);
     const [searchError, setSearchError] = useState('');
@@ -142,7 +142,7 @@ function AdminStaffSection({ staff, onCreate, onUpdate, onDelete }) {
             first_name: item.firstName || '',
             last_name: item.lastName || '',
             email: item.email || '',
-            staff_number: item.staffNumber || '',
+            pf_number: item.pfNumber || item.staffNumber || '',
             department_id: item.departmentId || '',
             rank_id: item.rankId || '',
             staff_category_id: matchedRank ? matchedRank.category_id : '',
@@ -154,7 +154,7 @@ function AdminStaffSection({ staff, onCreate, onUpdate, onDelete }) {
     }
 
     function closeCreateModal() {
-        setForm({ first_name: '', last_name: '', email: '', staff_number: '', department_id: '', rank_id: '', staff_category_id: '', passport_url: '' });
+        setForm({ first_name: '', last_name: '', email: '', pf_number: '', department_id: '', rank_id: '', staff_category_id: '', passport_url: '' });
         setEditingStaffId(null);
         setSearchSuccessful(false);
         setShowCreateModal(false);
@@ -176,14 +176,14 @@ function AdminStaffSection({ staff, onCreate, onUpdate, onDelete }) {
     }
 
     async function handleSearchStaff() {
-        if (!form.staff_number) return;
+        if (!form.pf_number) return;
         
         setIsSearchingStaff(true);
         setSearchError('');
         setSearchSuccessful(false);
         
         try {
-            const response = await fetch(`${JOSTUM_API}/v1/staff/${form.staff_number}`);
+            const response = await fetch(`${JOSTUM_API}/v1/staff/${form.pf_number}`);
             
             if (!response.ok) {
                 throw new Error('Staff not found or API error.');
@@ -413,12 +413,12 @@ function AdminStaffSection({ staff, onCreate, onUpdate, onDelete }) {
             >
                 <form id="admin-staff-create-form" className="admin-modal-form" onSubmit={submitCreate}>
                     {searchError && <div className="admin-form-error" style={{ color: 'var(--color-danger)', fontSize: '0.85rem', marginBottom: '1rem' }}>{searchError}</div>}
-                    <Field label="Staff Number (Search to auto-fill)">
+                    <Field label="PF Number (Search to auto-fill)">
                         <div style={{ position: 'relative', display: 'flex' }}>
                             <input 
                                 className="input" 
-                                value={form.staff_number} 
-                                onChange={(event) => setForm((current) => ({ ...current, staff_number: event.target.value }))} 
+                                value={form.pf_number} 
+                                onChange={(event) => setForm((current) => ({ ...current, pf_number: event.target.value }))} 
                                 onKeyDown={(event) => {
                                     if (event.key === 'Enter') {
                                         event.preventDefault();
@@ -433,7 +433,7 @@ function AdminStaffSection({ staff, onCreate, onUpdate, onDelete }) {
                                 type="button"
                                 className="admin-icon-button"
                                 onClick={handleSearchStaff}
-                                disabled={isSearchingStaff || !form.staff_number}
+                                disabled={isSearchingStaff || !form.pf_number}
                                 style={{ position: 'absolute', right: '0.25rem', top: '50%', transform: 'translateY(-50%)', padding: '0.4rem', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)' }}
                                 aria-label="Search staff details"
                                 title="Search staff details"
@@ -531,7 +531,7 @@ function AdminStaffSection({ staff, onCreate, onUpdate, onDelete }) {
                                     {viewingStaffDocs.staff.full_name || viewingStaffDocs.staff.name}
                                 </h3>
                                 <p style={{ margin: '0.25rem 0 0 0', color: '#475569', fontSize: '0.88rem' }}>
-                                    <strong>PF/Staff No:</strong> {viewingStaffDocs.staff.staff_number || viewingStaffDocs.staff.staffNumber || 'N/A'} &nbsp;|&nbsp;
+                                    <strong>PF Number:</strong> {viewingStaffDocs.staff.pf_number || viewingStaffDocs.staff.pfNumber || viewingStaffDocs.staff.staffNumber || 'N/A'} &nbsp;|&nbsp;
                                     <strong>Department:</strong> {viewingStaffDocs.staff.department || viewingStaffDocs.staff.departmentName || 'N/A'} &nbsp;|&nbsp;
                                     <strong>Rank:</strong> {viewingStaffDocs.staff.rank || viewingStaffDocs.staff.rankName || 'N/A'}
                                 </p>
