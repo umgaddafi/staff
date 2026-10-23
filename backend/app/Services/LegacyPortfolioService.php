@@ -3461,17 +3461,49 @@ class LegacyPortfolioService
             $fileSize = (int) filesize(public_path('uploads/evidence/' . $filename));
         }
 
-        $docId = DB::table('staff_documents')->insertGetId([
-            'staff_id' => $staffId,
-            'document_type' => $documentType,
-            'title' => $title ? trim($title) : null,
-            'file_path' => $filename,
-            'original_filename' => $originalName,
-            'file_size' => $fileSize,
-            'mime_type' => $mimeType,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $isSingleton = in_array($documentType, ['appointment_letter', 'confirmation_letter'], true);
+        $existing = null;
+        if ($isSingleton) {
+            $existing = DB::table('staff_documents')
+                ->where('staff_id', $staffId)
+                ->where('document_type', $documentType)
+                ->first();
+        }
+
+        if ($existing) {
+            $oldPath = public_path('uploads/evidence/' . $existing->file_path);
+            if (file_exists($oldPath)) {
+                @unlink($oldPath);
+            }
+
+            DB::table('staff_documents')
+                ->where('id', $existing->id)
+                ->update([
+                    'title' => $title ? trim($title) : null,
+                    'file_path' => $filename,
+                    'original_filename' => $originalName,
+                    'file_size' => $fileSize,
+                    'mime_type' => $mimeType,
+                    'updated_at' => now(),
+                ]);
+
+            $docId = (int) $existing->id;
+            $createdAt = (string) $existing->created_at;
+        } else {
+            $now = now();
+            $docId = DB::table('staff_documents')->insertGetId([
+                'staff_id' => $staffId,
+                'document_type' => $documentType,
+                'title' => $title ? trim($title) : null,
+                'file_path' => $filename,
+                'original_filename' => $originalName,
+                'file_size' => $fileSize,
+                'mime_type' => $mimeType,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+            $createdAt = $now->toDateTimeString();
+        }
 
         return [
             'id' => $docId,
@@ -3483,7 +3515,7 @@ class LegacyPortfolioService
             'original_filename' => $originalName,
             'file_size' => $fileSize,
             'mime_type' => $mimeType,
-            'created_at' => now()->toDateTimeString(),
+            'created_at' => $createdAt,
         ];
     }
 
@@ -3496,6 +3528,11 @@ class LegacyPortfolioService
 
         if (! $doc) {
             throw new RuntimeException('Document not found or access denied.');
+        }
+
+        if (in_array($doc->document_type, ['appointment_letter', 'confirmation_letter'], true)) {
+            $label = $doc->document_type === 'appointment_letter' ? 'Appointment' : 'Confirmation';
+            throw new RuntimeException("{$label} letter cannot be deleted once uploaded. You can only replace it with an updated file.");
         }
 
         $fullPath = public_path('uploads/evidence/' . $doc->file_path);

@@ -12,6 +12,9 @@ const DOCUMENT_TYPES = [
     { id: 'other', label: 'Other Document', shortLabel: 'Other' },
 ];
 
+const SINGLETON_DOCUMENT_TYPES = ['appointment_letter', 'confirmation_letter'];
+const isSingleton = (type) => SINGLETON_DOCUMENT_TYPES.includes(type);
+
 function formatBytes(bytes) {
     if (!bytes || bytes === 0) return '0 B';
     const k = 1024;
@@ -33,6 +36,9 @@ function StaffDocumentsSection({ initialDocuments = [] }) {
     const { isPending, runPending } = usePendingAction();
     const confirm = useConfirm();
 
+    const hasDocOfType = (type) => documents.some((d) => d.document_type === type);
+    const isReplacing = isSingleton(selectedType) && hasDocOfType(selectedType);
+
     useEffect(() => {
         loadDocuments();
     }, []);
@@ -52,10 +58,10 @@ function StaffDocumentsSection({ initialDocuments = [] }) {
     }
 
     function openUploadModal(category = null) {
-        if (category && category !== 'all') {
-            setSelectedType(category);
-        }
-        setTitle('');
+        const targetType = (category && category !== 'all') ? category : selectedType;
+        setSelectedType(targetType);
+        const existing = documents.find((d) => d.document_type === targetType);
+        setTitle(existing?.title || '');
         setFile(null);
         setErrorMessage(null);
         setShowModal(true);
@@ -148,7 +154,9 @@ function StaffDocumentsSection({ initialDocuments = [] }) {
                         className="staff-button staff-button-primary"
                         onClick={() => openUploadModal(activeTab)}
                     >
-                        + Upload Document
+                        {isSingleton(activeTab) && hasDocOfType(activeTab)
+                            ? `Replace ${docTypeLabel(activeTab)}`
+                            : '+ Upload Document'}
                     </button>
                 )}
             />
@@ -248,15 +256,27 @@ function StaffDocumentsSection({ initialDocuments = [] }) {
                                         View
                                     </a>
                                 ) : null}
-                                <button
-                                    type="button"
-                                    className="staff-pill-button is-danger"
-                                    onClick={() => handleDelete(doc)}
-                                    disabled={isPending(`delete-doc-${doc.id}`)}
-                                    style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
-                                >
-                                    {isPending(`delete-doc-${doc.id}`) ? 'Deleting...' : 'Delete'}
-                                </button>
+                                {isSingleton(doc.document_type) ? (
+                                    <button
+                                        type="button"
+                                        className="staff-button staff-button-primary"
+                                        onClick={() => openUploadModal(doc.document_type)}
+                                        style={{ padding: '0.4rem 0.85rem', fontSize: '0.82rem', background: '#0284c7' }}
+                                        title={`Replace ${docTypeLabel(doc.document_type)} with an updated file`}
+                                    >
+                                        Replace
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        className="staff-pill-button is-danger"
+                                        onClick={() => handleDelete(doc)}
+                                        disabled={isPending(`delete-doc-${doc.id}`)}
+                                        style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
+                                    >
+                                        {isPending(`delete-doc-${doc.id}`) ? 'Deleting...' : 'Delete'}
+                                    </button>
+                                )}
                             </div>
                         </div>
                     ))}
@@ -266,7 +286,7 @@ function StaffDocumentsSection({ initialDocuments = [] }) {
             {/* Upload Modal */}
             <StaffModal
                 open={showModal}
-                title="Upload Document"
+                title={isReplacing ? `Replace ${docTypeLabel(selectedType)}` : 'Upload Document'}
                 onClose={closeUploadModal}
                 actions={(
                     <>
@@ -284,7 +304,7 @@ function StaffDocumentsSection({ initialDocuments = [] }) {
                             className="staff-button staff-button-primary"
                             disabled={isPending('upload-doc')}
                         >
-                            {isPending('upload-doc') ? 'Uploading...' : 'Upload Document'}
+                            {isPending('upload-doc') ? 'Uploading...' : (isReplacing ? 'Replace Document' : 'Upload Document')}
                         </button>
                     </>
                 )}
@@ -293,6 +313,12 @@ function StaffDocumentsSection({ initialDocuments = [] }) {
                     {errorMessage && (
                         <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#991b1b', padding: '0.65rem 0.85rem', borderRadius: 6, fontSize: '0.84rem' }}>
                             {errorMessage}
+                        </div>
+                    )}
+
+                    {isReplacing && (
+                        <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', color: '#0369a1', padding: '0.6rem 0.85rem', borderRadius: 6, fontSize: '0.82rem', lineHeight: 1.4 }}>
+                            <strong>Replacing Document:</strong> An official {docTypeLabel(selectedType).toLowerCase()} is already on file. Uploading a new file will replace the current one.
                         </div>
                     )}
 
@@ -306,7 +332,7 @@ function StaffDocumentsSection({ initialDocuments = [] }) {
                         >
                             {DOCUMENT_TYPES.map((type) => (
                                 <option key={type.id} value={type.id}>
-                                    {type.label}
+                                    {type.label} {isSingleton(type.id) && hasDocOfType(type.id) ? '(Replace current)' : ''}
                                 </option>
                             ))}
                         </select>
