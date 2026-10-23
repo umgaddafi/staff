@@ -38,6 +38,8 @@ function ProfileSection({ staff, ranks, departments = [], onSubmit }) {
             last_name: staff.last_name || '',
             gender: staff.gender || 'Male',
             date_of_birth: staff.date_of_birth || '',
+            level: staff.level || '',
+            step: staff.step || '',
             rank_id: staff.rank_id || '',
             department_id: staff.department_id || '',
             phone: staff.phone || '',
@@ -106,6 +108,10 @@ function ProfileSection({ staff, ranks, departments = [], onSubmit }) {
                             <strong>{staff.pf_number || staff.pfNumber || staff.staff_number || staff.staffNumber || 'Not Assigned'}</strong>
                         </div>
                         <div>
+                            <span>Grade Level &amp; Step</span>
+                            <strong>{staff.level ? `Level ${staff.level}${staff.step ? ` / Step ${staff.step}` : ''}` : 'Not Set'}</strong>
+                        </div>
+                        <div>
                             <span>Primary Department</span>
                             <strong>{staff.department_name || 'Not Set'}</strong>
                         </div>
@@ -163,6 +169,22 @@ function ProfileSection({ staff, ranks, departments = [], onSubmit }) {
                                         </option>
                                     ))}
                                 </select>
+                            </Field>
+                            <Field label="Level">
+                                <input
+                                    className="input"
+                                    placeholder="e.g. 11 or CONUASS 05"
+                                    value={form.level || ''}
+                                    onChange={(event) => updateField('level', event.target.value)}
+                                />
+                            </Field>
+                            <Field label="Step">
+                                <input
+                                    className="input"
+                                    placeholder="e.g. 3 or Step 02"
+                                    value={form.step || ''}
+                                    onChange={(event) => updateField('step', event.target.value)}
+                                />
                             </Field>
                         </div>
                         <p className="staff-form-note">Rank and department changes require admin approval before they appear publicly.</p>

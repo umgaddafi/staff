@@ -196,6 +196,12 @@ class LegacySchemaManager
             if (! self::columnExists($db, 'staff', 'rank')) {
                 $db->statement("ALTER TABLE staff ADD COLUMN rank VARCHAR(255) NULL AFTER rank_id");
             }
+            if (! self::columnExists($db, 'staff', 'level')) {
+                $db->statement("ALTER TABLE staff ADD COLUMN level VARCHAR(50) NULL AFTER rank");
+            }
+            if (! self::columnExists($db, 'staff', 'step')) {
+                $db->statement("ALTER TABLE staff ADD COLUMN step VARCHAR(50) NULL AFTER level");
+            }
             if (! self::columnExists($db, 'staff', 'passport')) {
                 $db->statement("ALTER TABLE staff ADD COLUMN passport VARCHAR(255) NULL AFTER profile_photo");
             }

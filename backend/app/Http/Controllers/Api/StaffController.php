@@ -25,6 +25,8 @@ class StaffController extends Controller
             'last_name' => ['required', 'string', 'max:100'],
             'gender' => ['nullable', 'in:Male,Female,Other'],
             'date_of_birth' => ['nullable', 'date'],
+            'level' => ['nullable', 'string', 'max:50'],
+            'step' => ['nullable', 'string', 'max:50'],
             'rank_id' => ['nullable', 'integer'],
             'department_id' => ['nullable', 'integer'],
             'phone' => ['nullable', 'string', 'max:30'],

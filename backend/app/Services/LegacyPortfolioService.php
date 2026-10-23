@@ -583,11 +583,13 @@ class LegacyPortfolioService
         }
 
         $directFields = [
-            'first_name' => trim((string) ($data['first_name'] ?? '')),
+            'first_name' => trim((string) ($data['first_name'] ?? ($current['first_name'] ?? ''))),
             'other_name' => trim((string) ($data['other_name'] ?? '')),
-            'last_name' => trim((string) ($data['last_name'] ?? '')),
-            'gender' => trim((string) ($data['gender'] ?? '')),
+            'last_name' => trim((string) ($data['last_name'] ?? ($current['last_name'] ?? ''))),
+            'gender' => in_array($data['gender'] ?? '', ['Male', 'Female', 'Other'], true) ? $data['gender'] : ($current['gender'] ?? null),
             'date_of_birth' => ! empty($data['date_of_birth']) ? (string) $data['date_of_birth'] : null,
+            'level' => trim((string) ($data['level'] ?? '')),
+            'step' => trim((string) ($data['step'] ?? '')),
             'phone' => trim((string) ($data['phone'] ?? '')),
             'office_location' => trim((string) ($data['office_location'] ?? '')),
             'biography' => trim((string) ($data['biography'] ?? '')),
