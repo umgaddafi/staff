@@ -164,6 +164,10 @@ function PublicDirectoryPage({ user }) {
     // Display first list before appending the rest
     const visibleItems = [...firstList, ...restList];
 
+    const isAdminPortalUser = user && (user.role === 'Admin' || user.role === 'Moderator');
+    const staffLoginTarget = user ? (isAdminPortalUser ? '/admin' : '/staff') : '/login';
+    const staffLoginLabel = user ? (isAdminPortalUser ? 'Admin Portal' : 'Staff Portal') : 'Staff Login';
+
     return (
         <PublicLayout user={user} fullWidth>
             <section className="directory-hero-section">
@@ -186,6 +190,14 @@ function PublicDirectoryPage({ user }) {
                             <span>Service</span>
                         </div>
                         <div className="directory-hero-actions">
+                            <Link className="directory-hero-action is-staff-login" to={staffLoginTarget}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="directory-hero-action-icon" aria-hidden="true">
+                                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                                    <polyline points="10 17 15 12 10 7" />
+                                    <line x1="15" y1="12" x2="3" y2="12" />
+                                </svg>
+                                <span>{staffLoginLabel}</span>
+                            </Link>
                             <a className="directory-hero-action is-primary" href="#staffGrid">Browse Staff</a>
                             <a className="directory-hero-action is-secondary" href="#filterTools">Filter &amp; Sort</a>
                         </div>
