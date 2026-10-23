@@ -152,7 +152,7 @@ function ProfileSection({ staff, ranks, departments = [], onSubmit }) {
                                 </select>
                             </Field>
                             <Field label="Date of Birth"><input className="input" type="date" value={form.date_of_birth || ''} onChange={(event) => updateField('date_of_birth', event.target.value)} /></Field>
-                            <Field label="Academic Rank">
+                            <Field label="Academic Rank" className="is-full-width">
                                 <select className="select" value={form.rank_id || ''} onChange={(event) => updateField('rank_id', event.target.value)}>
                                     <option value="">Select rank</option>
                                     {ranks.map((rank) => (
@@ -160,7 +160,7 @@ function ProfileSection({ staff, ranks, departments = [], onSubmit }) {
                                     ))}
                                 </select>
                             </Field>
-                            <Field label="Primary Department">
+                            <Field label="Primary Department" className="is-full-width">
                                 <select className="select" value={form.department_id || ''} onChange={(event) => updateField('department_id', event.target.value)}>
                                     <option value="">Select department</option>
                                     {departments.map((dept) => (
@@ -170,22 +170,24 @@ function ProfileSection({ staff, ranks, departments = [], onSubmit }) {
                                     ))}
                                 </select>
                             </Field>
-                            <Field label="Level">
-                                <input
-                                    className="input"
-                                    placeholder="e.g. 11 or CONUASS 05"
-                                    value={form.level || ''}
-                                    onChange={(event) => updateField('level', event.target.value)}
-                                />
-                            </Field>
-                            <Field label="Step">
-                                <input
-                                    className="input"
-                                    placeholder="e.g. 3 or Step 02"
-                                    value={form.step || ''}
-                                    onChange={(event) => updateField('step', event.target.value)}
-                                />
-                            </Field>
+                            <div className="staff-level-step-row">
+                                <Field label="Level">
+                                    <input
+                                        className="input"
+                                        placeholder="e.g. 7"
+                                        value={form.level || ''}
+                                        onChange={(event) => updateField('level', event.target.value)}
+                                    />
+                                </Field>
+                                <Field label="Step">
+                                    <input
+                                        className="input"
+                                        placeholder="e.g. 2"
+                                        value={form.step || ''}
+                                        onChange={(event) => updateField('step', event.target.value)}
+                                    />
+                                </Field>
+                            </div>
                         </div>
                         <p className="staff-form-note">Rank and department changes require admin approval before they appear publicly.</p>
                     </div>

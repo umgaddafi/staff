@@ -7,8 +7,8 @@ import { StaffModal, StaffPageHeader } from './StaffShared';
 
 const DOCUMENT_TYPES = [
     { id: 'appointment_letter', label: 'Appointment Letter', shortLabel: 'Appointment' },
-    { id: 'promotion_letter', label: 'Promotion Letter', shortLabel: 'Promotion' },
     { id: 'confirmation_letter', label: 'Confirmation Letter', shortLabel: 'Confirmation' },
+    { id: 'promotion_letter', label: 'Promotion Letter', shortLabel: 'Promotion' },
     { id: 'other', label: 'Other Document', shortLabel: 'Other' },
 ];
 

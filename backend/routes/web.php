@@ -63,6 +63,11 @@ Route::prefix('api')->group(function (): void {
         Route::delete('/batches/{id}', [PayrollController::class, 'deleteBatch']);
         Route::get('/periods', [PayrollController::class, 'getStaffPeriods']);
         Route::get('/payslip', [PayrollController::class, 'getStaffPayslip']);
+        Route::get('/admin/payslips', [PayrollController::class, 'getAdminPayslips']);
+        Route::get('/admin/payslips/{id}', [PayrollController::class, 'getAdminPayslipDetail']);
+        Route::post('/admin/payslips', [PayrollController::class, 'saveAdminPayslip']);
+        Route::delete('/admin/payslips/{id}', [PayrollController::class, 'deleteAdminPayslip']);
+        Route::get('/admin/staff-lookup', [PayrollController::class, 'lookupStaffForPayslip']);
     });
 
     // Aliases for admin and staff payslip routes
@@ -71,6 +76,11 @@ Route::prefix('api')->group(function (): void {
         Route::post('/upload', [PayrollController::class, 'uploadBatch']);
         Route::get('/batches', [PayrollController::class, 'getBatches']);
         Route::delete('/batches/{id}', [PayrollController::class, 'deleteBatch']);
+        Route::get('/list', [PayrollController::class, 'getAdminPayslips']);
+        Route::get('/detail/{id}', [PayrollController::class, 'getAdminPayslipDetail']);
+        Route::post('/save', [PayrollController::class, 'saveAdminPayslip']);
+        Route::delete('/item/{id}', [PayrollController::class, 'deleteAdminPayslip']);
+        Route::get('/staff-lookup', [PayrollController::class, 'lookupStaffForPayslip']);
     });
 
     Route::prefix('staff/payslips')->group(function (): void {

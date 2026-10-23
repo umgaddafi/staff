@@ -139,7 +139,7 @@ function AdminPortalPage({ user, onLogout, showFlash }) {
         content = <CollegeManager items={data.colleges} onSave={(payload, id) => mutate(id ? `/api/admin/colleges/${id}` : '/api/admin/colleges', { method: id ? 'PUT' : 'POST', data: payload })} onDelete={(id) => mutate(`/api/admin/colleges/${id}`, { method: 'DELETE' })} />;
     } else if (section === 'departments') {
         content = <DepartmentManager items={data.departments} colleges={data.colleges} onSave={(payload, id) => mutate(id ? `/api/admin/departments/${id}` : '/api/admin/departments', { method: id ? 'PUT' : 'POST', data: payload })} onDelete={(id) => mutate(`/api/admin/departments/${id}`, { method: 'DELETE' })} />;
-    } else if (section === 'payslip') {
+    } else if (section === 'payslip' || section === 'payslips') {
         content = <AdminPayslipSection />;
     } else if (section === 'ranks') {
         content = <RankManager items={data.ranks} onSave={(payload, id) => mutate(id ? `/api/admin/ranks/${id}` : '/api/admin/ranks', { method: id ? 'PUT' : 'POST', data: payload })} onDelete={(id) => mutate(`/api/admin/ranks/${id}`, { method: 'DELETE' })} />;

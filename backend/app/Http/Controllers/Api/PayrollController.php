@@ -525,6 +525,423 @@ class PayrollController extends Controller
     }
 
     /**
+     * Admin: List staff payslips with filtering by period or staff search
+     */
+    public function getAdminPayslips(Request $request): JsonResponse
+    {
+        $year = $request->query('year');
+        $month = $request->query('month');
+        $search = trim((string) $request->query('search', ''));
+        $page = max(1, (int) $request->query('page', 1));
+        $perPage = max(5, min(100, (int) $request->query('per_page', 15)));
+
+        $query = DB::table('staff_payslips as sp')
+            ->leftJoin('staff as s', 'sp.staff_id', '=', 's.staff_id')
+            ->select(
+                'sp.id',
+                'sp.payroll_batch_id',
+                'sp.staff_id',
+                'sp.pf_number',
+                'sp.payroll_month',
+                'sp.payroll_year',
+                'sp.month_year_label',
+                'sp.employee_particulars',
+                'sp.total_earnings',
+                'sp.total_deductions',
+                'sp.net_salary',
+                'sp.updated_at',
+                's.first_name',
+                's.other_name',
+                's.last_name',
+                's.department',
+                's.rank'
+            );
+
+        if (!empty($year) && $year !== 'all') {
+            $query->where('sp.payroll_year', $year);
+        }
+
+        if (!empty($month) && $month !== 'all') {
+            $query->where('sp.payroll_month', $month);
+        }
+
+        if ($search !== '') {
+            $cleanSearch = $this->cleanPf($search);
+            $query->where(function ($q) use ($search, $cleanSearch) {
+                $q->where('sp.pf_number', 'like', "%{$search}%")
+                  ->orWhere('s.first_name', 'like', "%{$search}%")
+                  ->orWhere('s.last_name', 'like', "%{$search}%")
+                  ->orWhere('s.other_name', 'like', "%{$search}%")
+                  ->orWhere('sp.employee_particulars', 'like', "%{$search}%");
+                if ($cleanSearch !== '') {
+                    $q->orWhereRaw("REPLACE(REPLACE(sp.pf_number, '/', ''), '-', '') LIKE ?", ["%{$cleanSearch}%"]);
+                }
+            });
+        }
+
+        $total = $query->count();
+        $items = $query->orderByDesc('sp.payroll_year')
+            ->orderByRaw("FIELD(sp.payroll_month, 'December','November','October','September','August','July','June','May','April','March','February','January')")
+            ->orderByDesc('sp.id')
+            ->offset(($page - 1) * $perPage)
+            ->limit($perPage)
+            ->get()
+            ->map(function ($row) {
+                $particulars = json_decode($row->employee_particulars ?? '{}', true) ?: [];
+                $staffName = $particulars['full_name'] ?? trim(($row->first_name ?? '') . ' ' . ($row->last_name ?? ''));
+                if (empty($staffName)) {
+                    $staffName = $row->pf_number;
+                }
+                return [
+                    'id' => (int) $row->id,
+                    'payroll_batch_id' => $row->payroll_batch_id ? (int) $row->payroll_batch_id : null,
+                    'staff_id' => $row->staff_id ? (int) $row->staff_id : null,
+                    'pf_number' => (string) $row->pf_number,
+                    'staff_name' => $staffName,
+                    'department' => $particulars['department'] ?? ($row->department ?? 'N/A'),
+                    'designation' => $particulars['designation'] ?? ($row->rank ?? 'N/A'),
+                    'payroll_month' => (string) $row->payroll_month,
+                    'payroll_year' => (string) $row->payroll_year,
+                    'month_year_label' => (string) ($row->month_year_label ?? "{$row->payroll_month}-{$row->payroll_year}"),
+                    'total_earnings' => (float) $row->total_earnings,
+                    'total_deductions' => (float) $row->total_deductions,
+                    'net_salary' => (float) $row->net_salary,
+                    'updated_at' => (string) $row->updated_at,
+                ];
+            });
+
+        // Get distinct available years and months in the database
+        $availablePeriods = DB::table('staff_payslips')
+            ->select('payroll_year', 'payroll_month')
+            ->distinct()
+            ->orderByDesc('payroll_year')
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'payslips' => $items,
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $perPage,
+            'last_page' => (int) ceil($total / $perPage),
+            'available_periods' => $availablePeriods,
+        ]);
+    }
+
+    /**
+     * Admin: Get detailed payslip record
+     */
+    public function getAdminPayslipDetail(int $id): JsonResponse
+    {
+        $payslip = DB::table('staff_payslips as sp')
+            ->leftJoin('staff as s', 'sp.staff_id', '=', 's.staff_id')
+            ->where('sp.id', $id)
+            ->select('sp.*', 's.first_name', 's.other_name', 's.last_name', 's.department as staff_department', 's.rank as staff_rank', 's.level', 's.step')
+            ->first();
+
+        if (!$payslip) {
+            return response()->json(['status' => 'error', 'message' => 'Payslip record not found.'], 404);
+        }
+
+        $particulars = json_decode($payslip->employee_particulars ?? '{}', true) ?: [];
+        $incomes = json_decode($payslip->incomes ?? '[]', true) ?: [];
+        $deductions = json_decode($payslip->deductions ?? '[]', true) ?: [];
+
+        return response()->json([
+            'status' => 'success',
+            'payslip' => [
+                'id' => (int) $payslip->id,
+                'payroll_batch_id' => $payslip->payroll_batch_id ? (int) $payslip->payroll_batch_id : null,
+                'staff_id' => $payslip->staff_id ? (int) $payslip->staff_id : null,
+                'pf_number' => (string) $payslip->pf_number,
+                'payroll_month' => (string) $payslip->payroll_month,
+                'payroll_year' => (string) $payslip->payroll_year,
+                'month_year_label' => (string) $payslip->month_year_label,
+                'employee_particulars' => $particulars,
+                'incomes' => $incomes,
+                'deductions' => $deductions,
+                'total_earnings' => (float) $payslip->total_earnings,
+                'total_deductions' => (float) $payslip->total_deductions,
+                'net_salary' => (float) $payslip->net_salary,
+                'created_at' => (string) $payslip->created_at,
+                'updated_at' => (string) $payslip->updated_at,
+            ],
+        ]);
+    }
+
+    /**
+     * Admin: Look up staff details by PF Number or Name to auto-populate payslip particulars
+     */
+    public function lookupStaffForPayslip(Request $request): JsonResponse
+    {
+        $query = trim((string) ($request->query('query') ?: $request->query('q', '')));
+        if ($query === '') {
+            return response()->json(['status' => 'success', 'staff' => []]);
+        }
+
+        $clean = $this->cleanPf($query);
+        $staff = DB::table('staff as s')
+            ->leftJoin('ranks as r', 's.rank_id', '=', 'r.id')
+            ->leftJoin('department as d', 's.department_id', '=', 'd.department_id')
+            ->where(function ($q) use ($query, $clean) {
+                $q->where('s.pf_number', 'like', "%{$query}%")
+                  ->orWhere('s.first_name', 'like', "%{$query}%")
+                  ->orWhere('s.last_name', 'like', "%{$query}%")
+                  ->orWhere('s.other_name', 'like', "%{$query}%")
+                  ->orWhere('s.email', 'like', "%{$query}%");
+                if ($clean !== '') {
+                    $q->orWhereRaw("REPLACE(REPLACE(s.pf_number, '/', ''), '-', '') LIKE ?", ["%{$clean}%"]);
+                }
+            })
+            ->select(
+                's.staff_id',
+                's.pf_number',
+                's.first_name',
+                's.other_name',
+                's.last_name',
+                's.email',
+                's.department as legacy_department',
+                's.rank as legacy_rank',
+                'd.name as department_name',
+                'r.name as rank_name',
+                's.level',
+                's.step'
+            )
+            ->limit(10)
+            ->get()
+            ->map(function ($s) {
+                $name = trim("{$s->first_name} " . ($s->other_name ? "{$s->other_name} " : '') . "{$s->last_name}");
+                return [
+                    'staff_id' => (int) $s->staff_id,
+                    'pf_number' => (string) $s->pf_number,
+                    'full_name' => $name,
+                    'department' => (string) ($s->department_name ?: $s->legacy_department ?: ''),
+                    'designation' => (string) ($s->rank_name ?: $s->legacy_rank ?: ''),
+                    'salary_level' => (string) ($s->level ?: ''),
+                    'salary_step' => (string) ($s->step ?: ''),
+                ];
+            });
+
+        return response()->json(['status' => 'success', 'staff' => $staff]);
+    }
+
+    /**
+     * Admin: Add or update staff payslip details for a particular month and year
+     */
+    public function saveAdminPayslip(Request $request): JsonResponse
+    {
+        $id = $request->input('id') ? (int) $request->input('id') : null;
+        $pfNumber = trim((string) $request->input('pf_number', ''));
+        $payrollYear = trim((string) $request->input('payroll_year', ''));
+        $payrollMonth = trim((string) $request->input('payroll_month', ''));
+
+        if ($pfNumber === '' || $payrollYear === '' || $payrollMonth === '') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Staff PF Number, Payroll Year, and Payroll Month are required.',
+            ], 422);
+        }
+
+        // Clean PF and look up staff record
+        $clean = $this->cleanPf($pfNumber);
+        $staff = DB::table('staff')
+            ->where(function ($q) use ($pfNumber, $clean) {
+                $q->where('pf_number', $pfNumber);
+                if ($clean !== '') {
+                    $q->orWhereRaw("REPLACE(REPLACE(pf_number, '/', ''), '-', '') = ?", [$clean]);
+                }
+            })
+            ->first();
+
+        $staffId = $staff ? (int) $staff->staff_id : (int) $request->input('staff_id', 0);
+        $monthYearLabel = "{$payrollMonth}-{$payrollYear}";
+
+        // Particulars
+        $inputParticulars = (array) ($request->input('employee_particulars') ?: $request->input('particulars', []));
+        $particulars = [
+            'full_name' => trim((string) ($inputParticulars['full_name'] ?? ($staff ? trim("{$staff->first_name} {$staff->last_name}") : $pfNumber))),
+            'department' => trim((string) ($inputParticulars['department'] ?? ($staff->department ?? ''))),
+            'designation' => trim((string) ($inputParticulars['designation'] ?? ($staff->rank ?? ''))),
+            'salary_scale' => trim((string) ($inputParticulars['salary_scale'] ?? 'CONUASS')),
+            'salary_level' => trim((string) ($inputParticulars['salary_level'] ?? ($staff->level ?? ''))),
+            'salary_step' => trim((string) ($inputParticulars['salary_step'] ?? ($staff->step ?? ''))),
+            'bank_name' => trim((string) ($inputParticulars['bank_name'] ?? '')),
+            'account_no' => trim((string) ($inputParticulars['account_no'] ?? '')),
+            'pfa_name' => trim((string) ($inputParticulars['pfa_name'] ?? '')),
+            'pfa_pin' => trim((string) ($inputParticulars['pfa_pin'] ?? ($inputParticulars['pension_pin'] ?? ''))),
+            'paypoint' => trim((string) ($inputParticulars['paypoint'] ?? 'Electronic Paypoint')),
+        ];
+
+        // Process incomes
+        $rawIncomes = (array) $request->input('incomes', []);
+        $incomes = [];
+        $totalEarnings = 0.00;
+        foreach ($rawIncomes as $inc) {
+            $item = trim((string) ($inc['item'] ?? ($inc['name'] ?? '')));
+            if ($item === '') continue;
+            $amt = $this->parseAmount($inc['amount'] ?? 0);
+            $totalEarnings += $amt;
+            $incomes[] = [
+                'item' => strtoupper($item),
+                'amount' => number_format($amt, 2, '.', ','),
+                'om' => (string) ($inc['om'] ?? ''),
+            ];
+        }
+
+        // Process deductions
+        $rawDeductions = (array) $request->input('deductions', []);
+        $deductions = [];
+        $totalDeductions = 0.00;
+        foreach ($rawDeductions as $ded) {
+            $item = trim((string) ($ded['item'] ?? ($ded['name'] ?? '')));
+            if ($item === '') continue;
+            $amt = $this->parseAmount($ded['amount'] ?? 0);
+            $totalDeductions += $amt;
+            $deductions[] = [
+                'item' => strtoupper($item),
+                'amount' => number_format($amt, 2, '.', ','),
+                'om' => (string) ($ded['om'] ?? ''),
+            ];
+        }
+
+        $netSalary = $totalEarnings - $totalDeductions;
+
+        // Upsert logic: If ID given or matching pf + month + year already exists
+        $existing = null;
+        if ($id) {
+            $existing = DB::table('staff_payslips')->where('id', $id)->first();
+        }
+        if (!$existing) {
+            $existing = DB::table('staff_payslips')
+                ->where('pf_number', $pfNumber)
+                ->where('payroll_month', $payrollMonth)
+                ->where('payroll_year', (int) $payrollYear)
+                ->first();
+        }
+
+        // Resolve or create payroll_batch_id
+        $batchId = $existing && $existing->payroll_batch_id ? (int) $existing->payroll_batch_id : 0;
+        if ($batchId <= 0) {
+            $batch = DB::table('payroll_batches')
+                ->where('payroll_month', $payrollMonth)
+                ->where('payroll_year', (int) $payrollYear)
+                ->first();
+
+            if ($batch) {
+                $batchId = (int) $batch->id;
+            } else {
+                $batchId = (int) DB::table('payroll_batches')->insertGetId([
+                    'payroll_year' => (int) $payrollYear,
+                    'payroll_month' => $payrollMonth,
+                    'payroll_period' => $monthYearLabel,
+                    'original_file_name' => "Manual_Entry_{$monthYearLabel}.xlsx",
+                    'file_path' => null,
+                    'total_staff' => 1,
+                    'total_earnings' => $totalEarnings,
+                    'total_deductions' => $totalDeductions,
+                    'total_net_salary' => $netSalary,
+                    'uploaded_by' => null,
+                    'status' => 'Published',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        $data = [
+            'payroll_batch_id' => $batchId,
+            'staff_id' => $staffId > 0 ? $staffId : null,
+            'pf_number' => $pfNumber,
+            'payroll_month' => $payrollMonth,
+            'payroll_year' => (int) $payrollYear,
+            'month_year_label' => $monthYearLabel,
+            'employee_particulars' => json_encode($particulars, JSON_UNESCAPED_UNICODE),
+            'incomes' => json_encode($incomes, JSON_UNESCAPED_UNICODE),
+            'deductions' => json_encode($deductions, JSON_UNESCAPED_UNICODE),
+            'total_earnings' => $totalEarnings,
+            'total_deductions' => $totalDeductions,
+            'net_salary' => $netSalary,
+            'updated_at' => now(),
+        ];
+
+        if ($existing) {
+            DB::table('staff_payslips')->where('id', $existing->id)->update($data);
+            $savedId = (int) $existing->id;
+            $actionWord = 'updated';
+        } else {
+            $data['created_at'] = now();
+            $savedId = (int) DB::table('staff_payslips')->insertGetId($data);
+            $actionWord = 'added';
+        }
+
+        // Recalculate batch statistics
+        if ($batchId > 0) {
+            $batchTotals = DB::table('staff_payslips')
+                ->where('payroll_batch_id', $batchId)
+                ->selectRaw('COUNT(*) as total_staff, SUM(total_earnings) as total_earnings, SUM(total_deductions) as total_deductions, SUM(net_salary) as total_net_salary')
+                ->first();
+
+            if ($batchTotals) {
+                DB::table('payroll_batches')->where('id', $batchId)->update([
+                    'total_staff' => (int) ($batchTotals->total_staff ?? 0),
+                    'total_earnings' => (float) ($batchTotals->total_earnings ?? 0.00),
+                    'total_deductions' => (float) ($batchTotals->total_deductions ?? 0.00),
+                    'total_net_salary' => (float) ($batchTotals->total_net_salary ?? 0.00),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "Payslip for {$pfNumber} ({$payrollMonth} {$payrollYear}) was {$actionWord} successfully.",
+            'payslip_id' => $savedId,
+            'summary' => [
+                'total_earnings' => number_format($totalEarnings, 2),
+                'total_deductions' => number_format($totalDeductions, 2),
+                'net_salary' => number_format($netSalary, 2),
+            ],
+        ]);
+    }
+
+    /**
+     * Admin: Delete an individual staff payslip record
+     */
+    public function deleteAdminPayslip(int $id): JsonResponse
+    {
+        $payslip = DB::table('staff_payslips')->where('id', $id)->first();
+        if (!$payslip) {
+            return response()->json(['status' => 'error', 'message' => 'Payslip record not found.'], 404);
+        }
+
+        $batchId = (int) ($payslip->payroll_batch_id ?? 0);
+        DB::table('staff_payslips')->where('id', $id)->delete();
+
+        // Recalculate batch statistics
+        if ($batchId > 0) {
+            $batchTotals = DB::table('staff_payslips')
+                ->where('payroll_batch_id', $batchId)
+                ->selectRaw('COUNT(*) as total_staff, SUM(total_earnings) as total_earnings, SUM(total_deductions) as total_deductions, SUM(net_salary) as total_net_salary')
+                ->first();
+
+            if ($batchTotals && (int) $batchTotals->total_staff > 0) {
+                DB::table('payroll_batches')->where('id', $batchId)->update([
+                    'total_staff' => (int) $batchTotals->total_staff,
+                    'total_earnings' => (float) $batchTotals->total_earnings,
+                    'total_deductions' => (float) $batchTotals->total_deductions,
+                    'total_net_salary' => (float) $batchTotals->total_net_salary,
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Payslip record was deleted successfully.',
+        ]);
+    }
+
+    /**
      * Helper: Normalize PF Number for robust matching (e.g. 'PF/5797' -> 'PF5797')
      */
     protected function cleanPf(?string $pf): string
@@ -553,8 +970,8 @@ class PayrollController extends Controller
         // Fallback: check authenticated user's email matching staff
         $userId = (int) $request->session()->get('legacy_auth.userId', 0);
         if ($userId > 0) {
-            $user = DB::table('users')->where('id', $userId)->first();
-            if ($user) {
+            $user = DB::table('user_account')->where('user_id', $userId)->first();
+            if ($user && !empty($user->email)) {
                 $staff = DB::table('staff')->where('email', $user->email)->first();
                 if ($staff && !empty($staff->pf_number)) {
                     return $staff->pf_number;

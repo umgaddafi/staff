@@ -13,25 +13,27 @@ function Flash({ flash, onClear }) {
     );
 }
 
-function AdminModal({ open, title, children, actions, onClose, className = '' }) {
+function AdminModal({ open, title, children, actions, onClose, className = '', wide = false }) {
     useModalLifecycle({ open, onClose });
 
     if (!open) {
         return null;
     }
 
+    const modalClass = `admin-modal-window card ${wide ? 'is-wide' : ''} ${className}`.trim();
+
     return (
         <div className="admin-modal-root" role="presentation">
             <button type="button" className="admin-modal-backdrop" onClick={onClose} aria-label="Close dialog" />
-            <div className={`admin-modal-window card ${className}`.trim()} role="dialog" aria-modal="true" aria-label={title}>
+            <div className={modalClass} role="dialog" aria-modal="true" aria-label={title}>
                 <div className="admin-modal-header">
                     <h3>{title}</h3>
-                    <button type="button" className="admin-modal-close" onClick={onClose} aria-label="Close dialog">
-                        <span aria-hidden="true">×</span>
+                    <button type="button" className="admin-modal-close" onClick={onClose} aria-label="Close dialog" title="Close dialog">
+                        <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div className="admin-modal-body">{children}</div>
-                <div className="admin-modal-actions">{actions}</div>
+                {actions ? <div className="admin-modal-actions">{actions}</div> : null}
             </div>
         </div>
     );
@@ -52,9 +54,9 @@ function AdminPageHeader({ title, subtitle = '', action = null, meta = null }) {
     );
 }
 
-function Field({ label, children }) {
+function Field({ label, children, className = '' }) {
     return (
-        <div className="field">
+        <div className={`field ${className}`.trim()}>
             <label>{label}</label>
             {children}
         </div>

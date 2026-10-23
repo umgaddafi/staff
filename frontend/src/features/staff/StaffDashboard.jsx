@@ -3,7 +3,7 @@ import { StaffDashboardActionIcon, StaffDashboardStatIcon } from '../../componen
 
 function StaffDashboard({ data, onDownloadCv }) {
     const staff = data.profile.staff || {};
-    const staffDisplayName = [staff.first_name, staff.other_name, staff.last_name].filter(Boolean).join(' ') || data.user.name || 'Staff';
+    const firstName = staff.first_name?.trim()?.split(/\s+/)[0] || data.user?.name?.trim()?.split(/\s+/)[0] || 'Staff';
     const statsMeta = {
         publications: { to: '/staff/publications', icon: 'publications', color: '#1f6fff', background: 'rgba(31, 111, 255, 0.10)' },
         supervisions: { to: '/staff/supervision', icon: 'supervisions', color: '#198754', background: 'rgba(25, 135, 84, 0.10)' },
@@ -41,7 +41,7 @@ function StaffDashboard({ data, onDownloadCv }) {
     return (
         <>
             <section className="staff-dashboard-hero">
-                <h1 className="staff-dashboard-hero-title">Hello, {staffDisplayName}!</h1>
+                <h1 className="staff-dashboard-hero-title">Hello, {firstName}!</h1>
                 <p className="staff-dashboard-hero-copy">Welcome to your executive overview.</p>
                 <div className="staff-dashboard-hero-actions">
                     <Link className="staff-dashboard-hero-button is-primary" to="/staff/profile">
