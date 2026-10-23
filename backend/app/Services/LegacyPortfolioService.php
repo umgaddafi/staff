@@ -3447,10 +3447,15 @@ class LegacyPortfolioService
 
     public function uploadStaffDocument(int $userId, int $staffId, string $documentType, ?string $title, UploadedFile $file): array
     {
+        $originalName = (string) $file->getClientOriginalName();
+        $fileSize = (int) $file->getSize();
+        $mimeType = (string) ($file->getClientMimeType() ?: $file->getMimeType());
+
         $filename = $this->storeEvidenceUpload($file, "doc_{$staffId}_{$documentType}_");
-        $originalName = $file->getClientOriginalName();
-        $fileSize = $file->getSize();
-        $mimeType = $file->getMimeType();
+
+        if ($fileSize <= 0 && file_exists(public_path('uploads/evidence/' . $filename))) {
+            $fileSize = (int) filesize(public_path('uploads/evidence/' . $filename));
+        }
 
         $docId = DB::table('staff_documents')->insertGetId([
             'staff_id' => $staffId,
