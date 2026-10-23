@@ -27,10 +27,11 @@ class StaffController extends Controller
             'gender' => ['nullable', 'in:Male,Female,Other'],
             'date_of_birth' => ['nullable', 'date'],
             'rank_id' => ['nullable', 'integer'],
+            'department_id' => ['nullable', 'integer'],
             'phone' => ['nullable', 'string', 'max:30'],
             'office_location' => ['nullable', 'string', 'max:150'],
             'biography' => ['nullable', 'string'],
-            'profile_photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'profile_photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:250'],
         ]);
 
         return response()->json(
@@ -51,7 +52,7 @@ class StaffController extends Controller
             'institution' => ['required', 'string', 'max:200'],
             'country' => ['required', 'string', 'max:100'],
             'year' => ['required', 'integer'],
-            'evidence_file' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:8192'],
+            'evidence_file' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:250'],
         ]);
 
         $service->createQualificationRequest(
@@ -192,7 +193,7 @@ class StaffController extends Controller
             'body_name' => ['required', 'string', 'max:200'],
             'membership_no' => ['required', 'string', 'max:100'],
             'role' => ['nullable', 'string', 'max:150'],
-            'evidence_file' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:8192'],
+            'evidence_file' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:250'],
         ]);
 
         $service->createMembershipRequest(
@@ -262,6 +263,51 @@ class StaffController extends Controller
         $service->markAllNotificationsRead($this->userId($request));
 
         return response()->json(['message' => 'Notifications marked as read.']);
+    }
+
+    public function getDocuments(Request $request, LegacyPortfolioService $service): JsonResponse
+    {
+        return response()->json([
+            'status' => 'success',
+            'documents' => $service->getStaffDocuments($this->staffId($request)),
+        ]);
+    }
+
+    public function uploadDocument(Request $request, LegacyPortfolioService $service): JsonResponse
+    {
+        $payload = $request->validate([
+            'document_type' => ['required', 'string', 'in:appointment_letter,promotion_letter,confirmation_letter,other'],
+            'title' => ['nullable', 'string', 'max:255'],
+            'file' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:250'],
+        ]);
+
+        $document = $service->uploadStaffDocument(
+            $this->userId($request),
+            $this->staffId($request),
+            $payload['document_type'],
+            $payload['title'] ?? null,
+            $request->file('file')
+        );
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Document uploaded successfully.',
+            'document' => $document,
+        ]);
+    }
+
+    public function deleteDocument(Request $request, int $documentId, LegacyPortfolioService $service): JsonResponse
+    {
+        $service->deleteStaffDocument(
+            $this->userId($request),
+            $this->staffId($request),
+            $documentId
+        );
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Document deleted successfully.',
+        ]);
     }
 
     private function userId(Request $request): int

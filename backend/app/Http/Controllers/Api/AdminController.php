@@ -205,12 +205,24 @@ class AdminController extends Controller
 
     public function approveAllRequests(Request $request, LegacyPortfolioService $service): JsonResponse
     {
-        $service->approveAllRequests(
+        $count = $service->approveAllRequests(
             (int) $request->session()->get('legacy_auth.userId', 0)
         );
 
         return response()->json([
-            'message' => 'All pending requests approved successfully.',
+            'message' => $count > 0 
+                ? "Successfully approved {$count} pending request(s)." 
+                : 'No pending requests found to approve.',
+            'count' => $count,
+        ]);
+    }
+
+    public function getStaffDocuments(int $id, LegacyPortfolioService $service): JsonResponse
+    {
+        return response()->json([
+            'status' => 'success',
+            'staff' => $service->getStaffDetailsForAdmin($id),
+            'documents' => $service->getStaffDocuments($id),
         ]);
     }
 

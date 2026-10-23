@@ -14,7 +14,7 @@ import {
 import { StaffModal, StaffPageHeader } from './StaffShared';
 import { useConfirm } from '../../contexts/ConfirmContext';
 
-function ProfileSection({ staff, ranks, onSubmit }) {
+function ProfileSection({ staff, ranks, departments = [], onSubmit }) {
     const [form, setForm] = useState({});
     const [file, setFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
@@ -40,6 +40,7 @@ function ProfileSection({ staff, ranks, onSubmit }) {
             gender: staff.gender || 'Male',
             date_of_birth: staff.date_of_birth || '',
             rank_id: staff.rank_id || '',
+            department_id: staff.department_id || '',
             phone: staff.phone || '',
             office_location: staff.office_location || '',
             biography: staff.biography || '',
@@ -72,10 +73,24 @@ function ProfileSection({ staff, ranks, onSubmit }) {
                 <aside className="staff-profile-summary">
                     <div className="staff-profile-avatar-wrap">
                         <Avatar name={staff.full_name || `${staff.first_name || ''} ${staff.last_name || ''}`.trim()} photoUrl={previewUrl || staff.profile_photo_url} className="staff-profile-avatar" />
-                        <label className="staff-profile-avatar-edit" htmlFor="profile-photo-upload">
+                        <label className="staff-profile-avatar-edit" htmlFor="profile-photo-upload" title="Upload new photo (max 250 KB)">
                             <span aria-hidden="true">+</span>
                         </label>
-                        <input id="profile-photo-upload" type="file" accept=".jpg,.jpeg,.png,.webp" onChange={(event) => setFile(event.target.files?.[0] ?? null)} hidden />
+                        <input
+                            id="profile-photo-upload"
+                            type="file"
+                            accept=".jpg,.jpeg,.png,.webp"
+                            onChange={(event) => {
+                                const selected = event.target.files?.[0] ?? null;
+                                if (selected && selected.size > 250 * 1024) {
+                                    alert('Profile photo size exceeds 250 KB limit. Please choose a smaller image.');
+                                    event.target.value = '';
+                                    return;
+                                }
+                                setFile(selected);
+                            }}
+                            hidden
+                        />
                     </div>
                     {file && <span className="staff-form-note" style={{ display: 'block', textAlign: 'center', color: '#1b4d3e', fontWeight: 600, marginTop: 4 }}>Previewing selected photo</span>}
                     <h3>{[form.title || staff.title, form.first_name || staff.first_name, form.last_name || staff.last_name].filter(Boolean).join(' ') || staff.full_name || 'Staff Profile'}</h3>
@@ -98,7 +113,7 @@ function ProfileSection({ staff, ranks, onSubmit }) {
                     <div className="staff-form-panel">
                         <div className="staff-form-section-head">
                             <h3>Identity Details</h3>
-                            <p>Profile edits save immediately. Rank changes still require approval.</p>
+                            <p>Profile edits save immediately. Rank and department changes require admin approval.</p>
                         </div>
                         <div className="staff-form-grid is-profile">
                             <Field label="Title"><select className="select" value={form.title || ''} onChange={(event) => updateField('title', event.target.value)}><option value="">Select title</option><option value="Mr.">Mr.</option><option value="Mrs.">Mrs.</option><option value="Ms.">Ms.</option><option value="Dr.">Dr.</option><option value="Prof.">Prof.</option><option value="Engr.">Engr.</option><option value="Arc.">Arc.</option><option value="Pharm.">Pharm.</option></select></Field>
@@ -121,8 +136,18 @@ function ProfileSection({ staff, ranks, onSubmit }) {
                                     ))}
                                 </select>
                             </Field>
+                            <Field label="Primary Department">
+                                <select className="select" value={form.department_id || ''} onChange={(event) => updateField('department_id', event.target.value)}>
+                                    <option value="">Select department</option>
+                                    {departments.map((dept) => (
+                                        <option key={dept.id} value={dept.id}>
+                                            {dept.name}{dept.collegeName ? ` (${dept.collegeName})` : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            </Field>
                         </div>
-                        <p className="staff-form-note">Rank changes require admin approval before they appear publicly.</p>
+                        <p className="staff-form-note">Rank and department changes require admin approval before they appear publicly.</p>
                     </div>
                     <div className="staff-form-panel">
                         <div className="staff-form-section-head">
@@ -141,6 +166,11 @@ function ProfileSection({ staff, ranks, onSubmit }) {
                             <textarea className="textarea" rows={6} value={form.biography || ''} onChange={(event) => updateField('biography', event.target.value)} placeholder="Share your academic journey..." />
                         </Field>
                         <p className="staff-form-note">Tip: Highlight research interests and key teaching philosophies.</p>
+                    </div>
+                    <div className="profile-form-bottom-actions">
+                        <button className="staff-button staff-button-primary" type="submit" disabled={isSaving} style={{ minWidth: '180px', padding: '0.75rem 1.75rem', fontSize: '1rem', fontWeight: 700 }}>
+                            {isSaving ? 'Saving Changes...' : 'Save Changes'}
+                        </button>
                     </div>
                 </section>
             </div>
@@ -298,7 +328,23 @@ function QualificationsSection({ items, onCreate, onDelete }) {
                         <Field label="Year"><input className="input" type="number" value={form.year} onChange={(event) => setForm((current) => ({ ...current, year: event.target.value }))} required /></Field>
                     </div>
                     {countriesError ? <p className="staff-form-note">{countriesError} You can still type the country manually.</p> : null}
-                    <Field label="Upload Certificate (Image/PDF)"><input className="input" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(event) => setFile(event.target.files?.[0] ?? null)} required /></Field>
+                    <Field label="Upload Certificate (Image/PDF, max 250 KB)">
+                        <input
+                            className="input"
+                            type="file"
+                            accept=".jpg,.jpeg,.png,.webp,.pdf"
+                            onChange={(event) => {
+                                const selected = event.target.files?.[0] ?? null;
+                                if (selected && selected.size > 250 * 1024) {
+                                    alert('Certificate file size exceeds the 250 KB limit. Please choose a smaller file.');
+                                    event.target.value = '';
+                                    return;
+                                }
+                                setFile(selected);
+                            }}
+                            required
+                        />
+                    </Field>
                 </form>
             </StaffModal>
         </>

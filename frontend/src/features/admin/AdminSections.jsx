@@ -4,7 +4,7 @@ import { AdminModal, AdminPageHeader, Field } from '../../components/common/ui';
 import { Pagination } from '../../components/common/Pagination';
 import { PortalNavIcon } from '../../components/icons/AppIcons';
 import { usePendingAction } from '../../hooks/usePendingAction';
-import { formatDateTime } from '../../utils/formatters';
+import { formatDateTime, formatBytes } from '../../utils/formatters';
 import { AdminRequestsWorkspace } from './AdminRequestsWorkspace';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { api } from '../../lib/api';
@@ -80,12 +80,21 @@ function AdminDashboardSection({ dashboard }) {
     );
 }
 
+const DOC_CATEGORIES = [
+    { id: 'appointment_letter', label: 'Appointment Letter' },
+    { id: 'promotion_letter', label: 'Promotion Letters' },
+    { id: 'confirmation_letter', label: 'Confirmation Letter' },
+    { id: 'other', label: 'Other Documents' },
+    { id: 'all', label: 'All Documents' },
+];
+
 function AdminStaffSection({ staff, onCreate, onUpdate, onDelete }) {
     const [filters, setFilters] = useState({ search: '', departmentId: '', rankId: '', role: '' });
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(15);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [editingStaffId, setEditingStaffId] = useState(null);
+    const [viewingStaffDocs, setViewingStaffDocs] = useState(null);
     const [form, setForm] = useState({ first_name: '', last_name: '', email: '', staff_number: '', department_id: '', rank_id: '', staff_category_id: '', passport_url: '' });
     const [isSearchingStaff, setIsSearchingStaff] = useState(false);
     const [searchSuccessful, setSearchSuccessful] = useState(false);
@@ -219,6 +228,32 @@ function AdminStaffSection({ staff, onCreate, onUpdate, onDelete }) {
         }
     }
 
+    async function openDocViewer(item) {
+        setViewingStaffDocs({
+            staff: item,
+            documents: [],
+            loading: true,
+            error: null,
+            activeTab: 'appointment_letter',
+        });
+
+        try {
+            const res = await api(`/api/admin/staff/${item.staffId}/documents`);
+            setViewingStaffDocs((curr) => curr ? {
+                ...curr,
+                staff: res.staff || item,
+                documents: res.documents || [],
+                loading: false,
+            } : null);
+        } catch (err) {
+            setViewingStaffDocs((curr) => curr ? {
+                ...curr,
+                loading: false,
+                error: err.message || 'Failed to fetch staff documents',
+            } : null);
+        }
+    }
+
     return (
         <>
             <AdminPageHeader
@@ -316,6 +351,15 @@ function AdminStaffSection({ staff, onCreate, onUpdate, onDelete }) {
                                     <td>{item.rankName || 'N/A'}</td>
                                     <td>{item.departmentName || 'N/A'}</td>
                                     <td className="is-right" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                        <button
+                                            type="button"
+                                            className="admin-button admin-button-primary"
+                                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.85rem', background: '#0f766e', borderColor: '#0f766e' }}
+                                            onClick={() => openDocViewer(item)}
+                                            title="View Staff Reference Documents"
+                                        >
+                                            View
+                                        </button>
                                         <button
                                             type="button"
                                             className="admin-button-secondary"
@@ -464,6 +508,142 @@ function AdminStaffSection({ staff, onCreate, onUpdate, onDelete }) {
                     )}
                 </form>
             </AdminModal>
+            {viewingStaffDocs && (
+                <AdminModal
+                    open={Boolean(viewingStaffDocs)}
+                    title={`Staff Reference Documents: ${viewingStaffDocs.staff.name || viewingStaffDocs.staff.full_name || 'Staff'}`}
+                    onClose={() => setViewingStaffDocs(null)}
+                    wide
+                    actions={(
+                        <button
+                            type="button"
+                            className="admin-button admin-button-secondary"
+                            onClick={() => setViewingStaffDocs(null)}
+                        >
+                            Close
+                        </button>
+                    )}
+                >
+                    <div style={{ display: 'grid', gap: '1.25rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#0f172a' }}>
+                                    {viewingStaffDocs.staff.full_name || viewingStaffDocs.staff.name}
+                                </h3>
+                                <p style={{ margin: '0.25rem 0 0 0', color: '#475569', fontSize: '0.88rem' }}>
+                                    <strong>PF/Staff No:</strong> {viewingStaffDocs.staff.staff_number || viewingStaffDocs.staff.staffNumber || 'N/A'} &nbsp;|&nbsp;
+                                    <strong>Department:</strong> {viewingStaffDocs.staff.department || viewingStaffDocs.staff.departmentName || 'N/A'} &nbsp;|&nbsp;
+                                    <strong>Rank:</strong> {viewingStaffDocs.staff.rank || viewingStaffDocs.staff.rankName || 'N/A'}
+                                </p>
+                            </div>
+                            <span className="admin-badge is-primary" style={{ padding: '0.35rem 0.75rem' }}>
+                                {viewingStaffDocs.documents.length} Document{viewingStaffDocs.documents.length === 1 ? '' : 's'}
+                            </span>
+                        </div>
+
+                        {/* Tabs */}
+                        <div className="staff-docs-tabs">
+                            {DOC_CATEGORIES.map((cat) => {
+                                const count = cat.id === 'all'
+                                    ? viewingStaffDocs.documents.length
+                                    : viewingStaffDocs.documents.filter((d) => d.document_type === cat.id).length;
+                                return (
+                                    <button
+                                        key={cat.id}
+                                        type="button"
+                                        className={`staff-docs-tab-btn ${viewingStaffDocs.activeTab === cat.id ? 'active' : ''}`}
+                                        onClick={() => setViewingStaffDocs((curr) => curr ? { ...curr, activeTab: cat.id } : null)}
+                                    >
+                                        <span>{cat.label}</span>
+                                        <span className="staff-docs-tab-count">{count}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {viewingStaffDocs.loading ? (
+                            <div style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>
+                                Loading documents...
+                            </div>
+                        ) : viewingStaffDocs.error ? (
+                            <div className="admin-form-error" style={{ padding: '1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, color: '#dc2626' }}>
+                                {viewingStaffDocs.error}
+                            </div>
+                        ) : (() => {
+                            const docs = viewingStaffDocs.activeTab === 'all'
+                                ? viewingStaffDocs.documents
+                                : viewingStaffDocs.documents.filter((d) => d.document_type === viewingStaffDocs.activeTab);
+
+                            if (docs.length === 0) {
+                                return (
+                                    <div style={{ textAlign: 'center', padding: '2.5rem', background: '#f8fafc', borderRadius: 8, border: '1px dashed #cbd5e1' }}>
+                                        <p style={{ margin: 0, fontWeight: 600, color: '#64748b' }}>
+                                            No {DOC_CATEGORIES.find((c) => c.id === viewingStaffDocs.activeTab)?.label || 'documents'} uploaded by this staff member.
+                                        </p>
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <div style={{ display: 'grid', gap: '1rem' }}>
+                                    {docs.map((doc) => {
+                                        const isPdf = doc.mime_type === 'application/pdf' || doc.file_path?.toLowerCase().endsWith('.pdf');
+                                        const isImage = doc.mime_type?.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(doc.file_path || '');
+                                        return (
+                                            <div
+                                                key={doc.id}
+                                                style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '1.25rem', background: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
+                                            >
+                                                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+                                                    <div>
+                                                        <h4 style={{ margin: '0 0 0.35rem 0', fontSize: '1rem', color: '#1e293b' }}>
+                                                            {doc.title || doc.original_filename}
+                                                        </h4>
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', fontSize: '0.82rem', color: '#64748b' }}>
+                                                            <span><strong>Original File:</strong> {doc.original_filename}</span>
+                                                            <span><strong>Size:</strong> {formatBytes(doc.file_size)}</span>
+                                                            <span><strong>Uploaded:</strong> {formatDateTime(doc.created_at)}</span>
+                                                        </div>
+                                                    </div>
+                                                    {doc.file_url && (
+                                                        <a
+                                                            href={doc.file_url}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="admin-button admin-button-primary"
+                                                            style={{ fontSize: '0.82rem', padding: '0.35rem 0.85rem' }}
+                                                        >
+                                                            Open File
+                                                        </a>
+                                                    )}
+                                                </div>
+
+                                                {doc.file_url && isPdf && (
+                                                    <iframe
+                                                        src={doc.file_url}
+                                                        title={doc.title || doc.original_filename}
+                                                        style={{ width: '100%', height: '360px', border: '1px solid #e2e8f0', borderRadius: 6, marginTop: '1rem' }}
+                                                    />
+                                                )}
+
+                                                {doc.file_url && isImage && (
+                                                    <div style={{ textAlign: 'center', marginTop: '1rem', background: '#f8fafc', padding: '0.5rem', borderRadius: 6 }}>
+                                                        <img
+                                                            src={doc.file_url}
+                                                            alt={doc.title || doc.original_filename}
+                                                            style={{ maxHeight: '350px', maxWidth: '100%', objectFit: 'contain', borderRadius: 4 }}
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })()}
+                    </div>
+                </AdminModal>
+            )}
         </>
     );
 }

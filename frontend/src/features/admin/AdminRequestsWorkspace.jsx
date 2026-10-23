@@ -159,23 +159,25 @@ function AdminRequestsWorkspace({
             confirmText: 'Approve All',
             danger: false,
             action: async () => {
-                try {
-                    const result = await api('/api/admin/requests/approve-all', {
-                        method: 'POST',
-                    });
+                return runPending('approve-all', async () => {
+                    try {
+                        const result = await api('/api/admin/requests/approve-all', {
+                            method: 'POST',
+                        });
 
-                    showFlash(result.message || 'All pending requests approved.');
-                    await reloadPortal();
-                    if (selectedStaffId) {
-                        await loadHistory(selectedStaffId);
+                        showFlash(result.message || 'All pending requests approved.');
+                        await reloadPortal();
+                        if (selectedStaffId) {
+                            await loadHistory(selectedStaffId);
+                        }
+
+                        return { ok: true, result };
+                    } catch (error) {
+                        showFlash(getErrorMessage(error), 'error');
+                        return { ok: false, error };
                     }
-
-                    return { ok: true, result };
-                } catch (error) {
-                    showFlash(getErrorMessage(error), 'error');
-                    return { ok: false, error };
-                }
-            }
+                });
+            },
         });
     }
 

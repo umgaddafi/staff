@@ -431,6 +431,7 @@ class LegacyPortfolioService
                 'latestRequest' => $this->fetchLatestIdCardRequest($staffId),
                 'recentRequests' => $this->fetchIdCardRequests($staffId),
             ],
+            'documents' => $this->getStaffDocuments($staffId),
             'history' => $history,
             'notifications' => [
                 'items' => $notifications,
@@ -442,6 +443,7 @@ class LegacyPortfolioService
                     'name' => (string) $row->name,
                     'level' => (int) $row->id,
                 ])->all(),
+                'departments' => $this->listDepartments(),
                 'courses' => DB::table('course')->orderBy('course_code')->get()->map(fn ($row) => [
                     'id' => (int) $row->course_id,
                     'code' => (string) $row->course_code,
@@ -582,6 +584,11 @@ class LegacyPortfolioService
             throw new RuntimeException('The selected academic rank is invalid.');
         }
 
+        $requestedDeptId = (int) ($data['department_id'] ?? 0);
+        if ($requestedDeptId > 0 && ! DB::table('department')->where('department_id', $requestedDeptId)->exists()) {
+            throw new RuntimeException('The selected department is invalid.');
+        }
+
         $directFields = [
             'title' => trim((string) ($data['title'] ?? '')),
             'first_name' => trim((string) ($data['first_name'] ?? '')),
@@ -607,12 +614,13 @@ class LegacyPortfolioService
         }
 
         $rankChangeRequested = $requestedRankId > 0 && $requestedRankId !== (int) ($current['rank_id'] ?? 0);
+        $deptChangeRequested = $requestedDeptId > 0 && $requestedDeptId !== (int) ($current['department_id'] ?? 0);
 
-        if ($changes === [] && ! $rankChangeRequested) {
+        if ($changes === [] && ! $rankChangeRequested && ! $deptChangeRequested) {
             throw new RuntimeException('No changes were detected.');
         }
 
-        DB::transaction(function () use ($changes, $userId, $staffId, $rankChangeRequested, $requestedRankId): void {
+        DB::transaction(function () use ($changes, $userId, $staffId, $rankChangeRequested, $requestedRankId, $deptChangeRequested, $requestedDeptId): void {
             if ($changes !== []) {
                 $changes['updated_at'] = now();
                 DB::table('staff')->where('staff_id', $staffId)->update($changes);
@@ -622,12 +630,27 @@ class LegacyPortfolioService
             if ($rankChangeRequested) {
                 $this->createChangeLog($userId, 'staff', $staffId, ['rank_id' => $requestedRankId], 'UPDATE', 'Pending');
             }
+
+            if ($deptChangeRequested) {
+                $this->createChangeLog($userId, 'staff', $staffId, ['department_id' => $requestedDeptId], 'UPDATE', 'Pending');
+            }
         });
 
+        $pendingNotes = [];
+        if ($rankChangeRequested) {
+            $pendingNotes[] = 'rank change';
+        }
+        if ($deptChangeRequested) {
+            $pendingNotes[] = 'department change';
+        }
+
+        $message = 'Profile updated successfully.';
+        if ($pendingNotes !== []) {
+            $message = 'Profile updated. ' . ucfirst(implode(' and ', $pendingNotes)) . ' submitted for admin approval.';
+        }
+
         return [
-            'message' => $rankChangeRequested
-                ? 'Profile updated. Rank change has been submitted for admin approval.'
-                : 'Profile updated successfully.',
+            'message' => $message,
         ];
     }
 
@@ -1505,15 +1528,24 @@ class LegacyPortfolioService
         ];
     }
 
-    public function approveAllRequests(int $adminUserId): void
+    public function approveAllRequests(int $adminUserId): int
     {
-        $pendingLogs = DB::table('audit_log')
+        $pendingLogs = DB::table('change_log')
             ->where('status', 'Pending')
+            ->orderBy('log_id', 'asc')
             ->get();
 
+        $count = 0;
         foreach ($pendingLogs as $log) {
-            $this->decideRequest($adminUserId, (int) $log->log_id, 'approve', '');
+            try {
+                $this->decideRequest($adminUserId, (int) $log->log_id, 'approve', '');
+                $count++;
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
+
+        return $count;
     }
 
     public function decideRequest(int $adminUserId, int $logId, string $decision, string $rejectionReason): void
@@ -2168,6 +2200,13 @@ class LegacyPortfolioService
                 throw new RuntimeException('Unsupported entity update request.');
             }
 
+            if ($entity === 'staff' && isset($columns['department_id'])) {
+                $deptName = DB::table('department')->where('department_id', (int) $columns['department_id'])->value('name');
+                if ($deptName) {
+                    $columns['department'] = $deptName;
+                }
+            }
+
             DB::table($tableMap[$entity]['table'])
                 ->where($tableMap[$entity]['pk'], $entityId)
                 ->update($columns);
@@ -2345,7 +2384,7 @@ class LegacyPortfolioService
             return (int) $payload['staff_id'];
         }
 
-        if ($entityId > 0 && isset($payload['rank_id'])) {
+        if ($entityId > 0 && (isset($payload['rank_id']) || isset($payload['department_id']))) {
             return $entityId;
         }
 
@@ -2708,6 +2747,12 @@ class LegacyPortfolioService
             return (string) ($name ?: $value);
         }
 
+        if ($key === 'department_id') {
+            $name = DB::table('department')->where('department_id', (int) $value)->value('name');
+
+            return (string) ($name ?: $value);
+        }
+
         return (string) $value;
     }
 
@@ -2719,7 +2764,7 @@ class LegacyPortfolioService
             $prefix,
             ['jpg', 'jpeg', 'png', 'webp'],
             ['image/jpeg', 'image/png', 'image/webp'],
-            5 * 1024 * 1024
+            250 * 1024
         );
     }
 
@@ -2731,7 +2776,7 @@ class LegacyPortfolioService
             $prefix,
             ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
             ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
-            8 * 1024 * 1024
+            250 * 1024
         );
     }
 
@@ -3381,6 +3426,115 @@ class LegacyPortfolioService
             'success' => true,
             'message' => "Successfully queued {$count} screening invitation(s).",
             'count' => $count,
+        ];
+    }
+
+    public function getStaffDocuments(int $staffId): array
+    {
+        return DB::table('staff_documents')
+            ->where('staff_id', $staffId)
+            ->orderBy('id', 'desc')
+            ->get()
+            ->map(function ($row) {
+                return [
+                    'id' => (int) $row->id,
+                    'staff_id' => (int) $row->staff_id,
+                    'document_type' => (string) $row->document_type,
+                    'title' => (string) ($row->title ?? ''),
+                    'file_path' => (string) $row->file_path,
+                    'file_url' => $this->evidenceUrl($row->file_path),
+                    'original_filename' => (string) ($row->original_filename ?? ''),
+                    'file_size' => (int) ($row->file_size ?? 0),
+                    'mime_type' => (string) ($row->mime_type ?? ''),
+                    'created_at' => $row->created_at ? (string) $row->created_at : null,
+                    'updated_at' => $row->updated_at ? (string) $row->updated_at : null,
+                ];
+            })
+            ->all();
+    }
+
+    public function uploadStaffDocument(int $userId, int $staffId, string $documentType, ?string $title, UploadedFile $file): array
+    {
+        $filename = $this->storeEvidenceUpload($file, "doc_{$staffId}_{$documentType}_");
+        $originalName = $file->getClientOriginalName();
+        $fileSize = $file->getSize();
+        $mimeType = $file->getMimeType();
+
+        $docId = DB::table('staff_documents')->insertGetId([
+            'staff_id' => $staffId,
+            'document_type' => $documentType,
+            'title' => $title ? trim($title) : null,
+            'file_path' => $filename,
+            'original_filename' => $originalName,
+            'file_size' => $fileSize,
+            'mime_type' => $mimeType,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return [
+            'id' => $docId,
+            'staff_id' => $staffId,
+            'document_type' => $documentType,
+            'title' => $title ? trim($title) : '',
+            'file_path' => $filename,
+            'file_url' => $this->evidenceUrl($filename),
+            'original_filename' => $originalName,
+            'file_size' => $fileSize,
+            'mime_type' => $mimeType,
+            'created_at' => now()->toDateTimeString(),
+        ];
+    }
+
+    public function deleteStaffDocument(int $userId, int $staffId, int $documentId): void
+    {
+        $doc = DB::table('staff_documents')
+            ->where('id', $documentId)
+            ->where('staff_id', $staffId)
+            ->first();
+
+        if (! $doc) {
+            throw new RuntimeException('Document not found or access denied.');
+        }
+
+        $fullPath = public_path('uploads/evidence/' . $doc->file_path);
+        if (file_exists($fullPath)) {
+            @unlink($fullPath);
+        }
+
+        DB::table('staff_documents')->where('id', $documentId)->delete();
+    }
+
+    public function getStaffDetailsForAdmin(int $staffId): ?array
+    {
+        $staff = DB::table('staff as s')
+            ->leftJoin('ranks as r', 's.rank_id', '=', 'r.id')
+            ->leftJoin('department as d', 's.department_id', '=', 'd.department_id')
+            ->leftJoin('college as c', 'd.college_id', '=', 'c.college_id')
+            ->where('s.staff_id', $staffId)
+            ->select(
+                's.*',
+                'r.name as rank_name',
+                'd.name as department_name',
+                'c.name as college_name'
+            )
+            ->first();
+
+        if (! $staff) {
+            return null;
+        }
+
+        return [
+            'staff_id' => (int) $staff->staff_id,
+            'staff_number' => (string) ($staff->staff_number ?? ''),
+            'file_no' => (string) ($staff->file_no ?? ''),
+            'full_name' => trim(($staff->title ?? '') . ' ' . ($staff->first_name ?? '') . ' ' . ($staff->middle_name ?? '') . ' ' . ($staff->last_name ?? '')),
+            'email' => (string) ($staff->email ?? ''),
+            'phone' => (string) ($staff->phone ?? ''),
+            'department' => (string) ($staff->department_name ?? $staff->department ?? ''),
+            'faculty' => (string) ($staff->college_name ?? $staff->faculty ?? ''),
+            'rank' => (string) ($staff->rank_name ?? $staff->rank ?? ''),
+            'profile_photo_url' => !empty($staff->profile_photo) ? $this->fileUrl('uploads/' . ltrim((string) $staff->profile_photo, '/')) : null,
         ];
     }
 }

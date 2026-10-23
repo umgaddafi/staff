@@ -34,7 +34,7 @@ const stepLabels = {
   staff_id_card: 'Staff ID Card',
 };
 
-const MAX_DOCUMENT_SIZE = 200 * 1024;
+const MAX_DOCUMENT_SIZE = 250 * 1024;
 
 const statusText = {
   Pending: 'Pending review',
@@ -262,7 +262,7 @@ export function StaffAuditSections({ staff: currentStaff }) {
     if (!file) return;
     if (uploadingType) return;
     if (file.size >= MAX_DOCUMENT_SIZE) {
-      setError('The document must be less than 200KB.');
+      setError('The document must be less than 250KB.');
       event.target.value = '';
       return;
     }
@@ -711,6 +711,11 @@ function ProfileForm({ staff, currentStaff, onSaved }) {
   const uploadPassport = async (event) => {
     const file = event.target.files[0];
     if (!file || uploadingPassport) return;
+    if (file.size >= 250 * 1024) {
+      setError('The passport photograph must be less than 250KB.');
+      event.target.value = '';
+      return;
+    }
     const body = new FormData();
     body.append('passport', file);
     setUploadingPassport(true);
@@ -751,7 +756,7 @@ function ProfileForm({ staff, currentStaff, onSaved }) {
         </div>
         <div className="passport-copy">
           <strong>Passport Photograph</strong>
-          <span>JPG or PNG, maximum 2MB.</span>
+          <span>JPG or PNG, maximum 250KB.</span>
           {uploadingPassport && <em>Uploading passport...</em>}
         </div>
       </div>

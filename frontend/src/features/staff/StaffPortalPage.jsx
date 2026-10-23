@@ -23,6 +23,7 @@ import {
 } from './StaffProfileSections';
 import { HistorySection } from './StaffShared';
 import { StaffAppraisalSections } from './StaffAppraisalSections';
+import { StaffDocumentsSection } from './StaffDocumentsSection';
 import { StaffAuditSections } from './StaffAuditSections';
 import { StaffPaymentsSections } from './StaffPaymentsSections';
 
@@ -80,6 +81,7 @@ function StaffPortalPage({ user, onLogout, showFlash }) {
             title: 'My Profile',
             items: [
                 { to: '/staff/profile', label: 'Personal Information', navLabel: 'Personal Info', icon: 'profile' },
+                { to: '/staff/documents', label: 'Basic Documents', navLabel: 'Documents', icon: 'documents' },
                 { to: '/staff/qualifications', label: 'Qualifications', icon: 'qualifications' },
                 { to: '/staff/memberships', label: 'Memberships', icon: 'memberships' },
                 { to: '/staff/external', label: 'Web Profiles', icon: 'external' },
@@ -190,7 +192,9 @@ function StaffPortalPage({ user, onLogout, showFlash }) {
     if (section === 'dashboard') {
         content = <StaffDashboard data={data} onDownloadCv={() => downloadStaffCv(data.profile, data.user)} />;
     } else if (section === 'profile') {
-        content = <ProfileSection staff={data.profile.staff} ranks={data.referenceData.ranks} onSubmit={(formData) => mutate('/api/staff/profile', { method: 'POST', formData }, 'Profile updated.')} />;
+        content = <ProfileSection staff={data.profile.staff} ranks={data.referenceData.ranks} departments={data.referenceData?.departments || []} onSubmit={(formData) => mutate('/api/staff/profile', { method: 'POST', formData }, 'Profile updated.')} />;
+    } else if (section === 'documents') {
+        content = <StaffDocumentsSection initialDocuments={data.documents || []} />;
     } else if (section === 'qualifications') {
         content = <QualificationsSection items={data.profile.qualifications} onCreate={(formData) => mutate('/api/staff/qualifications', { method: 'POST', formData })} onDelete={(id) => mutate(`/api/staff/qualifications/${id}`, { method: 'DELETE' })} />;
     } else if (section === 'research') {
@@ -245,7 +249,7 @@ function StaffPortalPage({ user, onLogout, showFlash }) {
             onLogout={onLogout}
             variant="staff"
             staffTopbar={{
-                brandLabel: 'Staff Portfolio',
+                brandLabel: 'Staff Portal',
                 homeTo: '/staff',
                 publicViewTo: `/portfolio/${user.staffId || data.user.staffId}`,
                 profileTo: '/staff/profile',

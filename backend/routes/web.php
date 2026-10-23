@@ -129,6 +129,10 @@ Route::prefix('api')->group(function (): void {
 
             Route::post('/id-card/request', [StaffController::class, 'requestIdCard']);
 
+            Route::get('/documents', [StaffController::class, 'getDocuments']);
+            Route::post('/documents', [StaffController::class, 'uploadDocument']);
+            Route::delete('/documents/{documentId}', [StaffController::class, 'deleteDocument']);
+
             Route::post('/notifications/read-all', [StaffController::class, 'markAllNotificationsRead']);
             Route::post('/notifications/{notificationId}/read', [StaffController::class, 'markNotificationRead']);
         });
@@ -139,6 +143,7 @@ Route::prefix('api')->group(function (): void {
             Route::get('/portal', [AdminController::class, 'portal']);
             Route::post('/staff', [AdminController::class, 'createStaff']);
             Route::put('/staff/{staffId}', [AdminController::class, 'updateStaff']);
+            Route::get('/staff/{staffId}/documents', [AdminController::class, 'getStaffDocuments']);
             Route::post('/staff/{staffId}/role', [AdminController::class, 'assignStaffRole']);
             Route::post('/staff/{staffId}/deactivate', [AdminController::class, 'deactivateStaffAccount']);
             Route::post('/staff/{staffId}/reactivate', [AdminController::class, 'reactivateStaffAccount']);

@@ -202,17 +202,29 @@ function PortalShell({
                             <span className="admin-portal-topbar-brand-label">{resolvedAdminTopbar.brandLabel}</span>
                         </Link>
                     </div>
-                    <details className="admin-portal-topbar-dropdown">
-                        <summary className="admin-portal-topbar-account-button" aria-label="Admin menu" title={resolvedAdminTopbar.name}>
-                            <span className="admin-portal-topbar-avatar">{resolvedAdminTopbar.initials || initials(resolvedAdminTopbar.name)}</span>
-                            <span className="admin-portal-topbar-name">{resolvedAdminTopbar.name}</span>
-                            <ChevronDownIcon className="admin-portal-topbar-chevron" />
-                        </summary>
-                        <div className="admin-portal-topbar-menu-panel">
-                            <Link className="admin-portal-topbar-menu-item" to={resolvedAdminTopbar.homeTo} onClick={(e) => e.target.closest('details').removeAttribute('open')}>Dashboard</Link>
-                            <button type="button" className="admin-portal-topbar-menu-item is-danger" onClick={(e) => { e.target.closest('details').removeAttribute('open'); onLogout(); }}>Logout</button>
-                        </div>
-                    </details>
+                    <div className="admin-portal-topbar-tools">
+                        <details className="admin-portal-topbar-dropdown">
+                            <summary className="admin-portal-topbar-account-button" aria-label="Admin menu" title={resolvedAdminTopbar.name}>
+                                <span className="admin-portal-topbar-avatar">{resolvedAdminTopbar.initials || initials(resolvedAdminTopbar.name)}</span>
+                                <span className="admin-portal-topbar-name">{resolvedAdminTopbar.name}</span>
+                                <ChevronDownIcon className="admin-portal-topbar-chevron" />
+                            </summary>
+                            <div className="admin-portal-topbar-menu-panel">
+                                <Link className="admin-portal-topbar-menu-item" to={resolvedAdminTopbar.homeTo} onClick={(e) => e.target.closest('details').removeAttribute('open')}>Dashboard</Link>
+                                <button type="button" className="admin-portal-topbar-menu-item is-danger" onClick={(e) => { e.target.closest('details').removeAttribute('open'); onLogout(); }}>Logout</button>
+                            </div>
+                        </details>
+                        <button
+                            type="button"
+                            className="admin-portal-topbar-logout-button"
+                            onClick={onLogout}
+                            title="Sign out"
+                            aria-label="Sign out"
+                        >
+                            <PortalNavIcon name="logout" />
+                            <span>Logout</span>
+                        </button>
+                    </div>
                 </header>
             ) : null}
             {variant === 'staff' && resolvedStaffTopbar ? (
@@ -328,6 +340,16 @@ function PortalShell({
                                 <button type="button" className="staff-portal-topbar-menu-item is-danger" onClick={(e) => { e.target.closest('details').removeAttribute('open'); onLogout(); }}>Sign out</button>
                             </div>
                         </details>
+                        <button
+                            type="button"
+                            className="staff-portal-topbar-logout-direct"
+                            onClick={onLogout}
+                            title="Sign out"
+                            aria-label="Sign out"
+                        >
+                            <PortalNavIcon name="logout" />
+                            <span>Sign out</span>
+                        </button>
                     </div>
                 </header>
             ) : null}
@@ -456,7 +478,21 @@ function PortalShell({
                         )}
                     </nav>
                 </div>
-                {sidebarFooter ? <div className="portal-sidebar-footer">{sidebarFooter}</div> : null}
+                <div className="portal-sidebar-footer">
+                    <button
+                        type="button"
+                        className="portal-sidebar-logout-button"
+                        onClick={onLogout}
+                        title="Sign out"
+                        aria-label="Sign out"
+                    >
+                        <span className="portal-nav-icon" aria-hidden="true">
+                            <PortalNavIcon name="logout" />
+                        </span>
+                        {!isDesktopCollapsed ? <span className="portal-nav-title">Sign Out</span> : null}
+                    </button>
+                    {sidebarFooter}
+                </div>
             </aside>
             <main className="portal-content">
                 <div className={`portal-topbar${variant === 'default' ? ' card' : ''}`}>

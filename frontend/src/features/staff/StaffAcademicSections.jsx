@@ -446,7 +446,23 @@ function MembershipSection({ items, onCreate, onDelete }) {
                     <Field label="Organization Name"><input className="input" value={form.body_name} onChange={(event) => setForm((current) => ({ ...current, body_name: event.target.value }))} placeholder="e.g. ACM, IEEE" required /></Field>
                     <Field label="Membership No."><input className="input" value={form.membership_no} onChange={(event) => setForm((current) => ({ ...current, membership_no: event.target.value }))} placeholder="Registration ID" required /></Field>
                     <Field label="Membership Grade"><input className="input" value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value }))} placeholder="e.g. Full Member, Fellow" /></Field>
-                    <Field label="Upload Evidence (Image/PDF)"><input className="input" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(event) => setFile(event.target.files?.[0] ?? null)} required /></Field>
+                    <Field label="Upload Evidence (Image/PDF, max 250 KB)">
+                        <input
+                            className="input"
+                            type="file"
+                            accept=".jpg,.jpeg,.png,.webp,.pdf"
+                            onChange={(event) => {
+                                const selected = event.target.files?.[0] ?? null;
+                                if (selected && selected.size > 250 * 1024) {
+                                    alert('Evidence file size exceeds the 250 KB limit. Please choose a smaller file.');
+                                    event.target.value = '';
+                                    return;
+                                }
+                                setFile(selected);
+                            }}
+                            required
+                        />
+                    </Field>
                 </form>
             </StaffModal>
         </>
