@@ -124,7 +124,7 @@ function StaffPortalPage({ user, onLogout, showFlash }) {
         {
             title: 'Payments',
             items: [
-                { to: '/staff/payments', label: 'Payslip', icon: 'document' },
+                { to: '/staff/payments', label: 'Payslip', icon: 'payslip' },
             ],
         },
         {

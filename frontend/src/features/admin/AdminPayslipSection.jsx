@@ -994,6 +994,7 @@ export function AdminPayslipSection() {
                 open={modalOpen}
                 title={editingId ? 'Edit Staff Payslip' : 'Add / Update Staff Payslip'}
                 onClose={() => setModalOpen(false)}
+                wide
                 className="admin-modal-lg"
                 actions={
                     <>

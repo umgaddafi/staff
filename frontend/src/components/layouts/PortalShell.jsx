@@ -171,6 +171,12 @@ function PortalShell({
         ) : null
     );
 
+    const isStaffDashboardActive = location.pathname === '/staff' || location.pathname === '/staff/';
+    const isStaffPayslipActive = location.pathname === '/staff/payments' || location.pathname.startsWith('/staff/payments/');
+    const isStaffIdCardActive = location.pathname === '/staff/id-card' || location.pathname.startsWith('/staff/id-card/');
+    const isStaffMoreActive = isMobileSidebarOpen || (!isStaffDashboardActive && !isStaffPayslipActive && !isStaffIdCardActive);
+    const isStaffMoreDot = !isStaffDashboardActive && !isStaffPayslipActive && !isStaffIdCardActive;
+
     return (
         <div
             className={[
@@ -530,6 +536,57 @@ function PortalShell({
                 </div>
                 <div className="section-stack">{children}</div>
             </main>
+            {variant === 'staff' ? (
+                <nav className="staff-mobile-bottom-nav" aria-label="Staff mobile navigation">
+                    <NavLink
+                        to="/staff"
+                        end
+                        className={({ isActive }) => `staff-bottom-nav-item${isActive ? ' is-active' : ''}`}
+                        onClick={() => setIsMobileSidebarOpen(false)}
+                    >
+                        <span className="staff-bottom-nav-icon" aria-hidden="true">
+                            <PortalNavIcon name="dashboard" />
+                        </span>
+                        <span className="staff-bottom-nav-label">Dashboard</span>
+                    </NavLink>
+
+                    <NavLink
+                        to="/staff/payments"
+                        className={({ isActive }) => `staff-bottom-nav-item${isActive ? ' is-active' : ''}`}
+                        onClick={() => setIsMobileSidebarOpen(false)}
+                    >
+                        <span className="staff-bottom-nav-icon" aria-hidden="true">
+                            <PortalNavIcon name="payslip" />
+                        </span>
+                        <span className="staff-bottom-nav-label">Payslip</span>
+                    </NavLink>
+
+                    <NavLink
+                        to="/staff/id-card"
+                        className={({ isActive }) => `staff-bottom-nav-item${isActive ? ' is-active' : ''}`}
+                        onClick={() => setIsMobileSidebarOpen(false)}
+                    >
+                        <span className="staff-bottom-nav-icon" aria-hidden="true">
+                            <PortalNavIcon name="idCard" />
+                        </span>
+                        <span className="staff-bottom-nav-label">IDCard</span>
+                    </NavLink>
+
+                    <button
+                        type="button"
+                        className={`staff-bottom-nav-item staff-bottom-nav-more${isStaffMoreActive ? ' is-active' : ''}`}
+                        onClick={() => setIsMobileSidebarOpen((prev) => !prev)}
+                        aria-label={isMobileSidebarOpen ? 'Close navigation drawer' : 'Open more navigation drawer'}
+                        aria-expanded={isMobileSidebarOpen}
+                    >
+                        <span className="staff-bottom-nav-icon" aria-hidden="true">
+                            <PortalNavIcon name="more" />
+                        </span>
+                        <span className="staff-bottom-nav-label">More</span>
+                        {isStaffMoreDot ? <span className="staff-bottom-nav-dot" aria-hidden="true" /> : null}
+                    </button>
+                </nav>
+            ) : null}
         </div>
     );
 }

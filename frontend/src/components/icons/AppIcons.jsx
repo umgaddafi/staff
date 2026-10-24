@@ -666,6 +666,28 @@ function PortalNavIcon({ name }) {
         );
     }
 
+    if (name === 'payslip' || name === 'payments') {
+        return (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="16" rx="2.5" />
+                <line x1="3" y1="9" x2="21" y2="9" />
+                <path d="M7 14h4" />
+                <path d="M7 17h2" />
+                <circle cx="16.5" cy="15.5" r="1.5" />
+            </svg>
+        );
+    }
+
+    if (name === 'more') {
+        return (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="1.75" fill="currentColor" />
+                <circle cx="19" cy="12" r="1.75" fill="currentColor" />
+                <circle cx="5" cy="12" r="1.75" fill="currentColor" />
+            </svg>
+        );
+    }
+
     return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="9" />
